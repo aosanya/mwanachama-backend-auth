@@ -13,9 +13,10 @@
 
 DEV-1655 (gateway `go.mod`/`cmd/server/stores.go` wiring), DEV-1656 (gateway
 HTTP cutover, deleting the superseded `internal/domain` packages) and
-DEV-1657 (archiving the superseded Postgres migrations) all remain on the
-gateway's own `todo_auth_standup.md` board — not touched, not started, by
-this pass's explicit scope.
+DEV-1657 (archiving the superseded Postgres migrations) were filed and
+completed on the gateway's own `todo_auth_standup.md` board, in a later
+pass — see that repo's `documentation/3. implementation/todo_done.md` for
+the full record of that half.
 
 ### Discrepancies found against the gateway source during porting
 
