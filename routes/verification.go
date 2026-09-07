@@ -1,5 +1,5 @@
 // verification.go — HTTP routes over the verification domain, ported from
-// mwanachama-backend-api-gateway's orgchrome_verification_handlers.go.
+// mwanachama-backend-api-gateway's verification_handlers.go.
 // Only setVerification is portable — see doc.go: getVerification is gated
 // by the gateway's own requireContactRead (role/chapter-scoped read
 // authorization this package cannot reach) and submitVerification writes to

@@ -6,7 +6,7 @@
 //
 // A handler is portable into this package only if its body is a single call
 // (or small sequence of calls) into this repo's own domain repositories with
-// no cross-domain composition — no member/chapter/role/orgchrome/custody/comm
+// no cross-domain composition — no member/chapter/role/orgsettings/custody/comm
 // call in the body — the same line actor's and comm's own doc.go draw.
 // Session-token minting is the one deliberate exception: it is gateway-owned
 // (see SessionMinter in session.go), not a domain this package reaches into,
@@ -61,7 +61,7 @@
 //     order (keys retired, then the device marked signed out, then sessions
 //     revoked last). Stays in gateway.
 //   - phoneChallenge/phoneVerify — call the gateway's own canonicalPhone/
-//     diallingRegion, which read orgchrome.Repository for the organization's
+//     diallingRegion, which read orgsettings.Repository for the organization's
 //     default dialling region. Stays in gateway, which imports this repo's
 //     phonenumber subpackage directly for the canonicalization step once cut
 //     over.
@@ -78,7 +78,7 @@
 //     and enforces an inline caller-identity check tighter than Identity's
 //     shape here (a member may only submit their own application, gated at
 //     the handler rather than via a supplied seam). Stays in gateway.
-//   - getOrgChrome/getOwnOrgChrome/putOrgChrome — belong to orgchrome, a
+//   - getOrgSettings/getOwnOrgSettings/putOrgSettings — belong to orgsettings, a
 //     different domain that happened to share a handler file with
 //     verification in the gateway. Out of scope entirely for this repo; not
 //     ported, not excluded-with-reasoning like the rows above, simply not

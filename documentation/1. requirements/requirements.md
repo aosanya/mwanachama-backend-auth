@@ -65,5 +65,5 @@ spirit:
   archiving the gateway's superseded Postgres migrations (DEV-1657) — all
   three are the gateway repo's own follow-up work, not this repo's.
 - Every gateway handler that composes a domain this repo does not import
-  (member, chapter, role, orgchrome, custody, comm) — see `routes/doc.go`'s
+  (member, chapter, role, orgsettings, custody, comm) — see `routes/doc.go`'s
   named exclusion list.

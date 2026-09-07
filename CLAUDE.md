@@ -136,9 +136,9 @@ function per domain plus a `Routes(Deps)` aggregator. See `routes/doc.go` for
 the full portability classification — which of the gateway's original
 `auth_device_handlers.go`/`auth_handlers.go`/`auth_operator_handlers.go`/
 `auth_phone_handlers.go`/`auth_phone_region.go`/`auth_recovery_handlers.go`/
-`phone_salt_handlers.go`/`orgchrome_verification_handlers.go` handlers moved
+`phone_salt_handlers.go`/`orgsettings_verification_handlers.go` handlers moved
 here and which stay gateway-side because they compose a domain this repo
-must not depend on (member/chapter/role/orgchrome/custody/comm).
+must not depend on (member/chapter/role/orgsettings/custody/comm).
 
 **Session-token minting is gateway-owned, not a domain this repo reaches
 into.** `routes/session.go`'s `SessionMinter` is the externally-supplied seam
