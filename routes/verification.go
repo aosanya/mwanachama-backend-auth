@@ -9,7 +9,7 @@ package routes
 import (
 	"net/http"
 
-	"github.com/aosanya/mwanachama-backend-auth/models"
+	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 )
 
 // SetVerification handles PUT /members/{memberID}/verification — how an
@@ -22,10 +22,10 @@ import (
 // read off the current record rather than taken from the wire, so a
 // decision that does not resend those three fields cannot blank them — the
 // same field-carry-forward the gateway's original setVerification enforced.
-func SetVerification(verification models.VerificationRepository) http.HandlerFunc {
+func SetVerification(verification mwanachamaauth.VerificationRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
-			Status models.VerificationStatus `json:"status"`
+			Status mwanachamaauth.VerificationStatus `json:"status"`
 			Note   string                    `json:"note"`
 		}
 		if err := readJSON(r, &in); err != nil {
@@ -57,7 +57,7 @@ func SetVerification(verification models.VerificationRepository) http.HandlerFun
 
 // VerificationRoutes is SetVerification alone, addressed under
 // /members/{memberID}/verification.
-func VerificationRoutes(verification models.VerificationRepository) []Route {
+func VerificationRoutes(verification mwanachamaauth.VerificationRepository) []Route {
 	return []Route{
 		{Method: http.MethodPut, Path: "/members/{memberID}/verification", Handler: SetVerification(verification)},
 	}

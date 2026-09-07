@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aosanya/mwanachama-backend-auth/models"
+	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 )
 
 // Route is one address this package answers, relative to wherever the
@@ -34,10 +34,10 @@ func (r Route) Pattern(prefix string) string {
 // calls the per-domain *Routes functions directly instead, the same choice
 // actor's and comm's own Routes aggregators leave open.
 type Deps struct {
-	Auth         models.AuthRepository
-	Operators    models.OperatorRepository
-	Verification models.VerificationRepository
-	PhoneSalts   models.PhoneSaltRepository
+	Auth         mwanachamaauth.AuthRepository
+	Operators    mwanachamaauth.OperatorRepository
+	Verification mwanachamaauth.VerificationRepository
+	PhoneSalts   mwanachamaauth.PhoneSaltRepository
 
 	Minter SessionMinter
 	TTL    time.Duration

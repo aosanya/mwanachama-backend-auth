@@ -28,6 +28,16 @@
 // this repo entirely: routes/session.go's SessionMinter is the seam a mounting
 // gateway supplies its own internal/session.Manager through.
 //
+// # Callers need only this package's import, never models's directly
+//
+// Every models. identifier a caller outside this repo's own models/ package
+// actually reaches — this repo's own routes/ subpackage and
+// mwanachama-backend-api-gateway's HTTP/store layer — is aliased or forwarded
+// below, mirroring mwanachama-backend-shared's orgsettings/doc.go and
+// orgpolicy/doc.go for their own models/ subpackages. Identifiers models/
+// declares but that stay internal to this repo's own root-package files,
+// gormstore/ or tests are deliberately not aliased here.
+//
 // # Naming collisions, resolved by domain-of-origin prefix
 //
 // Four of the five sub-domains each declared their own ErrNotFound and
@@ -55,3 +65,78 @@
 // routes/doc.go for exactly which of the gateway's original handlers are
 // portable here and which stay gateway-side by design.
 package mwanachamaauth
+
+import "github.com/aosanya/mwanachama-backend-auth/models"
+
+// AuthRepository, OperatorRepository, VerificationRepository and
+// PhoneSaltRepository are aliases of their models. counterparts — the four
+// persistence-boundary interfaces this repo's routes/ package and every
+// mounting gateway build against.
+type (
+	AuthRepository         = models.AuthRepository
+	OperatorRepository     = models.OperatorRepository
+	VerificationRepository = models.VerificationRepository
+	PhoneSaltRepository    = models.PhoneSaltRepository
+
+	// Device, Challenge, OperatorCredential, OperatorAttempt, PhoneAttempt,
+	// Salt, VerificationRecord and VerificationStatus are aliases of their
+	// models. counterparts of the same name.
+	Device             = models.Device
+	Challenge          = models.Challenge
+	OperatorCredential = models.OperatorCredential
+	OperatorAttempt    = models.OperatorAttempt
+	PhoneAttempt       = models.PhoneAttempt
+	Salt               = models.Salt
+	VerificationRecord = models.VerificationRecord
+	VerificationStatus = models.VerificationStatus
+)
+
+// KindDevice, KindPhone and KindRecovery are the Challenge.Kind values,
+// forwarded from models. of the same name.
+const (
+	KindDevice   = models.KindDevice
+	KindPhone    = models.KindPhone
+	KindRecovery = models.KindRecovery
+
+	// SignOutByMember and SignOutByRecovery are the Device.SignedOutBy
+	// values, forwarded from models. of the same name.
+	SignOutByMember   = models.SignOutByMember
+	SignOutByRecovery = models.SignOutByRecovery
+
+	// VerificationStatusPending, VerificationStatusVerified and
+	// VerificationStatusRejected are forwarded from models. of the same
+	// name.
+	VerificationStatusPending  = models.VerificationStatusPending
+	VerificationStatusVerified = models.VerificationStatusVerified
+	VerificationStatusRejected = models.VerificationStatusRejected
+
+	// OperatorLockAfter forwards models.OperatorLockAfter.
+	OperatorLockAfter = models.OperatorLockAfter
+)
+
+// ErrAuthNotFound, ErrAuthChallengeExpired, ErrAuthDeviceSignedOut and
+// ErrAuthSignOutReasonRequired are aliases of their models. sentinels of the
+// same name.
+var (
+	ErrAuthNotFound              = models.ErrAuthNotFound
+	ErrAuthChallengeExpired      = models.ErrAuthChallengeExpired
+	ErrAuthDeviceSignedOut       = models.ErrAuthDeviceSignedOut
+	ErrAuthSignOutReasonRequired = models.ErrAuthSignOutReasonRequired
+
+	// ErrOperatorNotFound and ErrOperatorEmailTaken are aliases of their
+	// models. sentinels of the same name.
+	ErrOperatorNotFound   = models.ErrOperatorNotFound
+	ErrOperatorEmailTaken = models.ErrOperatorEmailTaken
+
+	// ErrVerificationNotFound aliases models.ErrVerificationNotFound.
+	ErrVerificationNotFound = models.ErrVerificationNotFound
+
+	// ErrPhoneSaltNotFound aliases models.ErrPhoneSaltNotFound.
+	ErrPhoneSaltNotFound = models.ErrPhoneSaltNotFound
+)
+
+// Normalize forwards to [models.Normalize].
+func Normalize(email string) string { return models.Normalize(email) }
+
+// ValidEmail forwards to [models.ValidEmail].
+func ValidEmail(email string) bool { return models.ValidEmail(email) }
