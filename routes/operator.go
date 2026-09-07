@@ -13,7 +13,6 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
-	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
 // operatorLockFor is how long five consecutive wrong passwords bar an
@@ -43,7 +42,7 @@ const signInRefusal = "that email address and password do not match a console si
 // call site — simpler, and the gateway can log the same distinction itself
 // around whatever wraps this route, since it already has the credential and
 // the error value this handler saw.
-func OperatorSignIn(ops models.OperatorRepository, minter SessionMinter, ttl time.Duration) http.HandlerFunc {
+func OperatorSignIn(ops mwanachamaauth.OperatorRepository, minter SessionMinter, ttl time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			Email    string `json:"email"`
@@ -53,7 +52,7 @@ func OperatorSignIn(ops models.OperatorRepository, minter SessionMinter, ttl tim
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		email := models.Normalize(in.Email)
+		email := mwanachamaauth.Normalize(in.Email)
 		if email == "" || in.Password == "" {
 			writeErr(w, http.StatusBadRequest, "an email address and a password are required")
 			return
@@ -114,7 +113,7 @@ func OperatorSignIn(ops models.OperatorRepository, minter SessionMinter, ttl tim
 
 // writeOperatorLocked shapes the lock-out answer in one place. 429 rather
 // than 401: the credential is not wrong, the caller has run out of tries.
-func writeOperatorLocked(w http.ResponseWriter, a models.OperatorAttempt, now time.Time) {
+func writeOperatorLocked(w http.ResponseWriter, a mwanachamaauth.OperatorAttempt, now time.Time) {
 	retry := int(a.LockedUntil.Sub(now).Seconds())
 	if retry < 1 {
 		retry = 1
@@ -132,7 +131,7 @@ func writeOperatorLocked(w http.ResponseWriter, a models.OperatorAttempt, now ti
 // The current password is required even though identity already proves who
 // the caller is — asking is what stops somebody who walked up to an unlocked
 // screen from locking the real operator out of their own console.
-func ChangeOperatorPassword(ops models.OperatorRepository, identity Identity) http.HandlerFunc {
+func ChangeOperatorPassword(ops mwanachamaauth.OperatorRepository, identity Identity) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			Email           string `json:"email"`
@@ -143,7 +142,7 @@ func ChangeOperatorPassword(ops models.OperatorRepository, identity Identity) ht
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		email := models.Normalize(in.Email)
+		email := mwanachamaauth.Normalize(in.Email)
 		cred, hash, err := ops.Verifier(r.Context(), email)
 		if err != nil {
 			writeErr(w, http.StatusUnauthorized, signInRefusal)
@@ -178,10 +177,10 @@ func ChangeOperatorPassword(ops models.OperatorRepository, identity Identity) ht
 }
 
 // DisableOperatorCredential handles DELETE /operator/credentials/{credentialID}.
-func DisableOperatorCredential(ops models.OperatorRepository) http.HandlerFunc {
+func DisableOperatorCredential(ops mwanachamaauth.OperatorRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ops.Disable(r.Context(), r.PathValue("credentialID"))
-		if errors.Is(err, models.ErrOperatorNotFound) {
+		if errors.Is(err, mwanachamaauth.ErrOperatorNotFound) {
 			writeErr(w, http.StatusNotFound, err.Error())
 			return
 		}
@@ -194,7 +193,7 @@ func DisableOperatorCredential(ops models.OperatorRepository) http.HandlerFunc {
 }
 
 // ListOperatorCredentials handles GET /members/{memberID}/operator-credentials.
-func ListOperatorCredentials(ops models.OperatorRepository) http.HandlerFunc {
+func ListOperatorCredentials(ops mwanachamaauth.OperatorRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		out, err := ops.ListForMember(r.Context(), r.PathValue("memberID"))
 		if err != nil {
@@ -210,7 +209,7 @@ func ListOperatorCredentials(ops models.OperatorRepository) http.HandlerFunc {
 // because sign-in carries no caller-identity gate at all (it is how a
 // session comes into being) while every credential-management route needs
 // one wrapped around it.
-func OperatorSignInRoutes(ops models.OperatorRepository, minter SessionMinter, ttl time.Duration) []Route {
+func OperatorSignInRoutes(ops mwanachamaauth.OperatorRepository, minter SessionMinter, ttl time.Duration) []Route {
 	return []Route{
 		{Method: http.MethodPost, Path: "/operator/signin", Handler: OperatorSignIn(ops, minter, ttl)},
 	}
@@ -221,7 +220,7 @@ func OperatorSignInRoutes(ops models.OperatorRepository, minter SessionMinter, t
 // /operator/credentials/{credentialID} and
 // /members/{memberID}/operator-credentials. createOperatorCredential is
 // deliberately not here; see doc.go.
-func OperatorCredentialRoutes(ops models.OperatorRepository, identity Identity) []Route {
+func OperatorCredentialRoutes(ops mwanachamaauth.OperatorRepository, identity Identity) []Route {
 	return []Route{
 		{Method: http.MethodPut, Path: "/operator/password", Handler: ChangeOperatorPassword(ops, identity)},
 		{Method: http.MethodDelete, Path: "/operator/credentials/{credentialID}", Handler: DisableOperatorCredential(ops)},

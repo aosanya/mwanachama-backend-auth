@@ -26,7 +26,7 @@ func SetVerification(verification mwanachamaauth.VerificationRepository) http.Ha
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			Status mwanachamaauth.VerificationStatus `json:"status"`
-			Note   string                    `json:"note"`
+			Note   string                            `json:"note"`
 		}
 		if err := readJSON(r, &in); err != nil {
 			writeErr(w, http.StatusBadRequest, err.Error())

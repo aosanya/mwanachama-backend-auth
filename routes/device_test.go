@@ -11,7 +11,6 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
-	"github.com/aosanya/mwanachama-backend-auth/models"
 	"github.com/aosanya/mwanachama-backend-auth/routes"
 )
 
@@ -24,7 +23,7 @@ func TestDeviceChallengeAndVerifyHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dev, err := auth.RegisterDevice(ctx, models.Device{
+	dev, err := auth.RegisterDevice(ctx, mwanachamaauth.Device{
 		MemberID: "m1", PublicKey: base64.StdEncoding.EncodeToString(pub),
 	})
 	if err != nil {
@@ -39,7 +38,7 @@ func TestDeviceChallengeAndVerifyHappyPath(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("challenge status = %d, body %s", rec.Code, rec.Body.String())
 	}
-	var challenge models.Challenge
+	var challenge mwanachamaauth.Challenge
 	decodeBody(t, rec, &challenge)
 	if challenge.MemberID != "" {
 		t.Fatalf("challenge response leaked member_id: %+v", challenge)
@@ -82,14 +81,14 @@ func TestDeviceVerifyRefusesWrongSignature(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dev, err := auth.RegisterDevice(ctx, models.Device{
+	dev, err := auth.RegisterDevice(ctx, mwanachamaauth.Device{
 		MemberID: "m1", PublicKey: base64.StdEncoding.EncodeToString(pub),
 	})
 	if err != nil {
 		t.Fatalf("RegisterDevice: %v", err)
 	}
-	challenge, err := auth.CreateChallenge(ctx, models.Challenge{
-		Kind: models.KindDevice, DeviceID: dev.ID, MemberID: dev.MemberID, Secret: "nonce",
+	challenge, err := auth.CreateChallenge(ctx, mwanachamaauth.Challenge{
+		Kind: mwanachamaauth.KindDevice, DeviceID: dev.ID, MemberID: dev.MemberID, Secret: "nonce",
 	})
 	if err != nil {
 		t.Fatalf("CreateChallenge: %v", err)

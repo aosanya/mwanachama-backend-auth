@@ -9,7 +9,6 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
-	"github.com/aosanya/mwanachama-backend-auth/models"
 	"github.com/aosanya/mwanachama-backend-auth/routes"
 )
 
@@ -22,7 +21,7 @@ func TestOperatorSignInHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Hash: %v", err)
 	}
-	if _, err := ops.Create(ctx, models.OperatorCredential{MemberID: "m1", Email: "op@example.org"}, hash); err != nil {
+	if _, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{MemberID: "m1", Email: "op@example.org"}, hash); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -51,7 +50,7 @@ func TestOperatorSignInLocksOutAfterFiveFailures(t *testing.T) {
 	handler := routes.OperatorSignIn(ops, minter, time.Hour)
 
 	var lastCode int
-	for i := 0; i < models.OperatorLockAfter; i++ {
+	for i := 0; i < mwanachamaauth.OperatorLockAfter; i++ {
 		req := httptest.NewRequest(http.MethodPost, "/operator/signin",
 			strings.NewReader(`{"email":"nobody@example.org","password":"whatever-wrong-1"}`))
 		rec := httptest.NewRecorder()
@@ -59,7 +58,7 @@ func TestOperatorSignInLocksOutAfterFiveFailures(t *testing.T) {
 		lastCode = rec.Code
 	}
 	if lastCode != http.StatusTooManyRequests {
-		t.Fatalf("after %d failures expected 429, got %d", models.OperatorLockAfter, lastCode)
+		t.Fatalf("after %d failures expected 429, got %d", mwanachamaauth.OperatorLockAfter, lastCode)
 	}
 
 	// One more attempt, even with nothing else wrong, is still locked.
@@ -80,7 +79,7 @@ func TestChangeOperatorPasswordForbidsAnotherCallersCredential(t *testing.T) {
 	ops := mwanachamaauth.NewOperatorStore(db, tables)
 	ctx := context.Background()
 	hash, _ := mwanachamaauth.Hash("correct horse battery staple")
-	if _, err := ops.Create(ctx, models.OperatorCredential{MemberID: "m1", Email: "owner@example.org"}, hash); err != nil {
+	if _, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{MemberID: "m1", Email: "owner@example.org"}, hash); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -109,7 +108,7 @@ func TestDisableAndListOperatorCredentials(t *testing.T) {
 	ops := mwanachamaauth.NewOperatorStore(db, tables)
 	ctx := context.Background()
 	hash, _ := mwanachamaauth.Hash("correct horse battery staple")
-	cred, err := ops.Create(ctx, models.OperatorCredential{MemberID: "m1", Email: "d@example.org"}, hash)
+	cred, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{MemberID: "m1", Email: "d@example.org"}, hash)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -139,7 +138,7 @@ func TestDisableAndListOperatorCredentials(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list status = %d", rec.Code)
 	}
-	var out []models.OperatorCredential
+	var out []mwanachamaauth.OperatorCredential
 	decodeBody(t, rec, &out)
 	if len(out) != 1 || out[0].ID != cred.ID {
 		t.Fatalf("expected the disabled credential still listed, got %+v", out)

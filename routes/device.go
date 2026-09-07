@@ -12,17 +12,16 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
-	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
 // authStatusFor maps this repo's auth error sentinels to a status code.
 func authStatusFor(err error) int {
 	switch {
-	case errors.Is(err, models.ErrAuthNotFound):
+	case errors.Is(err, mwanachamaauth.ErrAuthNotFound):
 		return http.StatusNotFound
-	case errors.Is(err, models.ErrAuthChallengeExpired),
-		errors.Is(err, models.ErrAuthDeviceSignedOut),
-		errors.Is(err, models.ErrAuthSignOutReasonRequired):
+	case errors.Is(err, mwanachamaauth.ErrAuthChallengeExpired),
+		errors.Is(err, mwanachamaauth.ErrAuthDeviceSignedOut),
+		errors.Is(err, mwanachamaauth.ErrAuthSignOutReasonRequired):
 		return http.StatusUnauthorized
 	default:
 		return http.StatusInternalServerError
@@ -46,7 +45,7 @@ func writeAuthErr(w http.ResponseWriter, err error) {
 // signed-out handset is answered exactly as an unknown one (DEV-1272): the
 // two are one refusal on purpose, so a caller who could tell them apart
 // would learn which device ids were once real.
-func DeviceChallenge(auth models.AuthRepository) http.HandlerFunc {
+func DeviceChallenge(auth mwanachamaauth.AuthRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("deviceID")
 		dev, err := auth.GetDevice(r.Context(), id)
@@ -54,8 +53,8 @@ func DeviceChallenge(auth models.AuthRepository) http.HandlerFunc {
 			writeErr(w, http.StatusNotFound, "device not found")
 			return
 		}
-		c, err := auth.CreateChallenge(r.Context(), models.Challenge{
-			Kind: models.KindDevice, DeviceID: dev.ID, MemberID: dev.MemberID,
+		c, err := auth.CreateChallenge(r.Context(), mwanachamaauth.Challenge{
+			Kind: mwanachamaauth.KindDevice, DeviceID: dev.ID, MemberID: dev.MemberID,
 			Secret: randHex(16),
 		})
 		if err != nil {
@@ -77,7 +76,7 @@ func DeviceChallenge(auth models.AuthRepository) http.HandlerFunc {
 // careful polarity. On success, mints a session via minter and writes it with
 // 201 — the reward for a security act that already happened, not a bare
 // acknowledgement.
-func DeviceVerify(auth models.AuthRepository, minter SessionMinter, ttl time.Duration, allowUnsignedProof bool) http.HandlerFunc {
+func DeviceVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl time.Duration, allowUnsignedProof bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		deviceID := r.PathValue("deviceID")
 		var in struct {
@@ -101,7 +100,7 @@ func DeviceVerify(auth models.AuthRepository, minter SessionMinter, ttl time.Dur
 			writeErr(w, http.StatusUnauthorized, err.Error())
 			return
 		}
-		if c.DeviceID != deviceID || c.Kind != models.KindDevice {
+		if c.DeviceID != deviceID || c.Kind != mwanachamaauth.KindDevice {
 			writeErr(w, http.StatusUnauthorized, "challenge mismatch")
 			return
 		}
@@ -133,7 +132,7 @@ func DeviceVerify(auth models.AuthRepository, minter SessionMinter, ttl time.Dur
 
 // DeviceChallengeRoutes is DeviceChallenge alone, addressed under
 // /devices/{deviceID}/challenge.
-func DeviceChallengeRoutes(auth models.AuthRepository) []Route {
+func DeviceChallengeRoutes(auth mwanachamaauth.AuthRepository) []Route {
 	return []Route{
 		{Method: http.MethodPost, Path: "/devices/{deviceID}/challenge", Handler: DeviceChallenge(auth)},
 	}
@@ -145,7 +144,7 @@ func DeviceChallengeRoutes(auth models.AuthRepository) []Route {
 // middleware (both are public, but a mounting process's rate limiting or
 // logging policy may still differ between "ask for a challenge" and "spend
 // one").
-func DeviceVerifyRoutes(auth models.AuthRepository, minter SessionMinter, ttl time.Duration, allowUnsignedProof bool) []Route {
+func DeviceVerifyRoutes(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl time.Duration, allowUnsignedProof bool) []Route {
 	return []Route{
 		{Method: http.MethodPost, Path: "/devices/{deviceID}/verify", Handler: DeviceVerify(auth, minter, ttl, allowUnsignedProof)},
 	}

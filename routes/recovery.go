@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aosanya/mwanachama-backend-auth/models"
+	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 )
 
 // RecoveryRequest handles POST /recovery/request.
@@ -19,7 +19,7 @@ import (
 // member's recovery phrase holder, a rig that needs to see the secret in
 // tests says so explicitly; a deployment that says nothing keeps it to
 // itself, matching the gateway's own "fails closed" reasoning for this flag.
-func RecoveryRequest(auth models.AuthRepository, echoChallengeCode bool) http.HandlerFunc {
+func RecoveryRequest(auth mwanachamaauth.AuthRepository, echoChallengeCode bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			MemberID string `json:"member_id"`
@@ -28,8 +28,8 @@ func RecoveryRequest(auth models.AuthRepository, echoChallengeCode bool) http.Ha
 			writeErr(w, http.StatusBadRequest, "member_id required")
 			return
 		}
-		c, err := auth.CreateChallenge(r.Context(), models.Challenge{
-			Kind: models.KindRecovery, MemberID: in.MemberID,
+		c, err := auth.CreateChallenge(r.Context(), mwanachamaauth.Challenge{
+			Kind: mwanachamaauth.KindRecovery, MemberID: in.MemberID,
 			Secret: randHex(8),
 		})
 		if err != nil {
@@ -60,7 +60,7 @@ func RecoveryRequest(auth models.AuthRepository, echoChallengeCode bool) http.Ha
 // fails, the caller gets no session and the old handsets keep working — a
 // state a member can retry out of, rather than a live session sitting beside
 // a possibly-compromised handset.
-func RecoveryVerify(auth models.AuthRepository, minter SessionMinter, ttl time.Duration) http.HandlerFunc {
+func RecoveryVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			ChallengeID string `json:"challenge_id"`
@@ -75,7 +75,7 @@ func RecoveryVerify(auth models.AuthRepository, minter SessionMinter, ttl time.D
 			writeErr(w, http.StatusUnauthorized, err.Error())
 			return
 		}
-		if c.Kind != models.KindRecovery || c.Secret != in.Secret {
+		if c.Kind != mwanachamaauth.KindRecovery || c.Secret != in.Secret {
 			writeErr(w, http.StatusUnauthorized, "secret mismatch")
 			return
 		}
@@ -96,7 +96,7 @@ func RecoveryVerify(auth models.AuthRepository, minter SessionMinter, ttl time.D
 
 // RecoveryRoutes is RecoveryRequest + RecoveryVerify, addressed under
 // /recovery/request and /recovery/verify.
-func RecoveryRoutes(auth models.AuthRepository, minter SessionMinter, ttl time.Duration, echoChallengeCode bool) []Route {
+func RecoveryRoutes(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl time.Duration, echoChallengeCode bool) []Route {
 	return []Route{
 		{Method: http.MethodPost, Path: "/recovery/request", Handler: RecoveryRequest(auth, echoChallengeCode)},
 		{Method: http.MethodPost, Path: "/recovery/verify", Handler: RecoveryVerify(auth, minter, ttl)},

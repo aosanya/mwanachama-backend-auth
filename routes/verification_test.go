@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
-	"github.com/aosanya/mwanachama-backend-auth/models"
 	"github.com/aosanya/mwanachama-backend-auth/routes"
 )
 
@@ -18,8 +17,8 @@ func TestSetVerificationCarriesForwardSubmittedFields(t *testing.T) {
 	ctx := context.Background()
 
 	// A prior self-submission the operator's PUT must not clobber.
-	if _, err := verification.Set(ctx, models.VerificationRecord{
-		MemberID: "m1", Status: models.VerificationStatusPending,
+	if _, err := verification.Set(ctx, mwanachamaauth.VerificationRecord{
+		MemberID: "m1", Status: mwanachamaauth.VerificationStatusPending,
 		FullName: "Jane Member", Phone: "+254700000000", WorkflowID: "wf-1",
 	}); err != nil {
 		t.Fatalf("seed Set: %v", err)
@@ -34,9 +33,9 @@ func TestSetVerificationCarriesForwardSubmittedFields(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body %s", rec.Code, rec.Body.String())
 	}
-	var out models.VerificationRecord
+	var out mwanachamaauth.VerificationRecord
 	decodeBody(t, rec, &out)
-	if out.Status != models.VerificationStatusVerified || out.Note != "ID confirmed" {
+	if out.Status != mwanachamaauth.VerificationStatusVerified || out.Note != "ID confirmed" {
 		t.Fatalf("decision not applied: %+v", out)
 	}
 	if out.FullName != "Jane Member" || out.Phone != "+254700000000" || out.WorkflowID != "wf-1" {
@@ -59,9 +58,9 @@ func TestSetVerificationOpensAnUnappliedForMemberFirst(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body %s", rec.Code, rec.Body.String())
 	}
-	var out models.VerificationRecord
+	var out mwanachamaauth.VerificationRecord
 	decodeBody(t, rec, &out)
-	if out.Status != models.VerificationStatusRejected || out.FullName != "" {
+	if out.Status != mwanachamaauth.VerificationStatusRejected || out.FullName != "" {
 		t.Fatalf("expected a clean first decision with no prior submission, got %+v", out)
 	}
 }

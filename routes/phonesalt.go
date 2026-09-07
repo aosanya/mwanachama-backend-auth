@@ -1,7 +1,7 @@
 // phonesalt.go — HTTP routes over the phone-salt register, ported from
 // mwanachama-backend-api-gateway's phone_salt_handlers.go. There is one
 // route here and there will never be a second that returns a key — see
-// models.Salt's own doc comment for why a handler in this file could not
+// mwanachamaauth.Salt's own doc comment for why a handler in this file could not
 // serialise the secret if it tried.
 package routes
 
@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aosanya/mwanachama-backend-auth/models"
+	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 )
 
 // saltView is one row of the salt register — every field an admin screen
@@ -29,7 +29,7 @@ type saltView struct {
 	RetiredBy string     `json:"retired_by,omitempty"`
 }
 
-func newSaltView(s models.Salt, now time.Time) saltView {
+func newSaltView(s mwanachamaauth.Salt, now time.Time) saltView {
 	return saltView{
 		ID:        s.ID,
 		SetAt:     s.SetAt,
@@ -44,7 +44,7 @@ func newSaltView(s models.Salt, now time.Time) saltView {
 // ListPhoneSalts handles GET /phone-salts — the whole register, newest
 // first. An empty list is a real answer and not an error: it means
 // provisioning has not written the first salt yet.
-func ListPhoneSalts(salts models.PhoneSaltRepository) http.HandlerFunc {
+func ListPhoneSalts(salts mwanachamaauth.PhoneSaltRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		list, err := salts.List(r.Context())
 		if err != nil {
@@ -61,7 +61,7 @@ func ListPhoneSalts(salts models.PhoneSaltRepository) http.HandlerFunc {
 }
 
 // PhoneSaltRoutes is ListPhoneSalts alone, addressed under /phone-salts.
-func PhoneSaltRoutes(salts models.PhoneSaltRepository) []Route {
+func PhoneSaltRoutes(salts mwanachamaauth.PhoneSaltRepository) []Route {
 	return []Route{
 		{Method: http.MethodGet, Path: "/phone-salts", Handler: ListPhoneSalts(salts)},
 	}

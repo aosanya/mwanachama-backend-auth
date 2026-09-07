@@ -9,7 +9,6 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
-	"github.com/aosanya/mwanachama-backend-auth/models"
 	"github.com/aosanya/mwanachama-backend-auth/routes"
 )
 
@@ -34,7 +33,7 @@ func TestRecoveryRequestAndVerifyHappyPath(t *testing.T) {
 
 	// Register a device for m1 first, so the sweep has something to eject.
 	ctx := context.Background()
-	dev, err := auth.RegisterDevice(ctx, models.Device{MemberID: "m1", PublicKey: "pk"})
+	dev, err := auth.RegisterDevice(ctx, mwanachamaauth.Device{MemberID: "m1", PublicKey: "pk"})
 	if err != nil {
 		t.Fatalf("RegisterDevice: %v", err)
 	}
@@ -58,7 +57,7 @@ func TestRecoveryRequestAndVerifyHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDevice: %v", err)
 	}
-	if !swept.IsSignedOut() || swept.SignedOutBy != models.SignOutByRecovery {
+	if !swept.IsSignedOut() || swept.SignedOutBy != mwanachamaauth.SignOutByRecovery {
 		t.Fatalf("expected the member's device swept by recovery, got %+v", swept)
 	}
 }
@@ -69,7 +68,7 @@ func TestRecoveryVerifyRefusesWrongSecret(t *testing.T) {
 	auth := mwanachamaauth.NewAuthStore(db, tables)
 	ctx := context.Background()
 
-	c, err := auth.CreateChallenge(ctx, models.Challenge{Kind: models.KindRecovery, MemberID: "m1", Secret: "abc123"})
+	c, err := auth.CreateChallenge(ctx, mwanachamaauth.Challenge{Kind: mwanachamaauth.KindRecovery, MemberID: "m1", Secret: "abc123"})
 	if err != nil {
 		t.Fatalf("CreateChallenge: %v", err)
 	}
