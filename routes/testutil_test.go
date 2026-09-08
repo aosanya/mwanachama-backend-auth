@@ -40,7 +40,7 @@ func (f *fakeMinter) Mint(_ context.Context, memberID, deviceID string, ttl time
 	f.minted++
 	now := time.Now().UTC()
 	return routes.Session{
-		Token: "tok-" + memberID, MemberID: memberID, DeviceID: deviceID,
+		Token: "tok-" + memberID, ActorID: memberID, DeviceID: deviceID,
 		IssuedAt: now, ExpiresAt: now.Add(ttl),
 	}, nil
 }

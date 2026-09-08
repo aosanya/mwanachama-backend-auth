@@ -12,7 +12,7 @@ import (
 // follow-up pass.
 type Session struct {
 	Token     string    `json:"token"`
-	MemberID  string    `json:"member_id"`
+	ActorID   string    `json:"actor_id"`
 	DeviceID  string    `json:"device_id,omitempty"`
 	IssuedAt  time.Time `json:"issued_at"`
 	ExpiresAt time.Time `json:"expires_at"`

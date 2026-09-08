@@ -61,7 +61,7 @@ func TestDeviceChallengeAndVerifyHappyPath(t *testing.T) {
 	}
 	var session routes.Session
 	decodeBody(t, rec, &session)
-	if session.MemberID != "m1" || session.Token == "" {
+	if session.ActorID != "m1" || session.Token == "" {
 		t.Fatalf("unexpected session: %+v", session)
 	}
 	if minter.minted != 1 {

@@ -36,7 +36,7 @@ func TestOperatorSignInHappyPath(t *testing.T) {
 	}
 	var session routes.Session
 	decodeBody(t, rec, &session)
-	if session.MemberID != "m1" {
+	if session.ActorID != "m1" {
 		t.Fatalf("unexpected session: %+v", session)
 	}
 }
