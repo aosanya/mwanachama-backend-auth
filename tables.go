@@ -19,6 +19,10 @@ type TableNames = gormstore.TableNames
 // see gormstore.DefaultTableNames.
 func DefaultTableNames() TableNames { return gormstore.DefaultTableNames() }
 
+// PrefixedTableNames builds this repo's eight table names with prefix
+// prepended to each. See [gormstore.PrefixedTableNames].
+func PrefixedTableNames(prefix string) TableNames { return gormstore.PrefixedTableNames(prefix) }
+
 // Migrate creates or updates every table t names. Callers run this once at
 // startup (or in test setup) before constructing any of this package's
 // *Store types with the same db and t.

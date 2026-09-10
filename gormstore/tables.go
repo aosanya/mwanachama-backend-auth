@@ -59,6 +59,27 @@ func DefaultTableNames() TableNames {
 	}
 }
 
+// PrefixedTableNames builds DefaultTableNames' eight table names with prefix
+// prepended to each — for a caller whose database also holds other domains'
+// tables and wants this repo's own eight visibly grouped together.
+// DefaultTableNames itself stays fixed to the gateway's original names (see
+// its doc comment); this is an additive alternative, not a replacement.
+func PrefixedTableNames(prefix string) TableNames {
+	return TableNames{
+		AuthDevices:       prefix + "device",
+		AuthChallenges:    prefix + "challenge",
+		AuthPhones:        prefix + "phone",
+		AuthPhoneAttempts: prefix + "phone_attempt",
+
+		OperatorCredentials: prefix + "operator_credential",
+		OperatorAttempts:    prefix + "operator_attempt",
+
+		Verifications: prefix + "verification",
+
+		PhoneSalts: prefix + "phone_salt",
+	}
+}
+
 // Migrate creates or updates the eight tables t names, via GORM's AutoMigrate
 // scoped to each table name in turn, plus the Postgres SEQUENCEs the
 // id-minting BeforeCreate hooks below read from (see mintID) and the
