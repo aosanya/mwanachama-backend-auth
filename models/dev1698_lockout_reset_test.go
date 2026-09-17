@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// TestOperatorAttempt_PinsFailuresBelowLockThresholdNeverReset pins DEV-1658:
+// TestOperatorAttempt_PinsFailuresBelowLockThresholdNeverReset pins DEV-1698:
 // OperatorAttempt.Fail's own doc comment promises "the five are always
 // consecutive within one window rather than cumulative over an address's
 // lifetime — otherwise a credential used for a year would lock on its fifth
@@ -18,7 +18,7 @@ import (
 // This test asserts the CURRENT (broken) behavior: four failures, one per
 // calendar year, still sum to Failed=4 with no reset, and a fifth failure
 // a year after that locks the address — exactly the "locks on its fifth
-// typo ever" scenario the doc comment says cannot happen. Once DEV-1658 is
+// typo ever" scenario the doc comment says cannot happen. Once DEV-1698 is
 // fixed (either resetting on elapsed-since-last-failure, or the doc comment
 // being corrected to describe the real, intentional policy), this
 // assertion must be revisited: a real per-window reset would keep Failed
@@ -51,7 +51,7 @@ func TestOperatorAttempt_PinsFailuresBelowLockThresholdNeverReset(t *testing.T) 
 // TestPhoneAttempt_PinsFailuresBelowLockThresholdNeverReset is
 // TestOperatorAttempt_PinsFailuresBelowLockThresholdNeverReset's identical
 // twin for PhoneAttempt.Fail (models/auth.go) — same shape, same doc
-// comment promise, same gap. See DEV-1658.
+// comment promise, same gap. See DEV-1698.
 func TestPhoneAttempt_PinsFailuresBelowLockThresholdNeverReset(t *testing.T) {
 	base := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 	lockFor := 15 * time.Minute

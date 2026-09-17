@@ -9,10 +9,10 @@ package routes_test
 // a real httptest.NewServer + http.ServeMux built from OperatorSignInRoutes,
 // never a direct handler call, per the fleet integration-test-sweep method.
 //
-// Investigated as part of DEV-1658's lockout probe: this property HOLDS —
+// Investigated as part of DEV-1698's lockout probe: this property HOLDS —
 // see TestOperatorSignIn_NoCredentialAddressIsIndistinguishableFromWrongPassword
-// below. DEV-1658 itself is a separate, narrower finding (the reset policy,
-// not this symmetry) — see models/dev1658_lockout_reset_test.go.
+// below. DEV-1698 itself is a separate, narrower finding (the reset policy,
+// not this symmetry) — see models/dev1698_lockout_reset_test.go.
 
 import (
 	"context"
