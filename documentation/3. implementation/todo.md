@@ -1,12 +1,5 @@
 # mwanachama-backend-auth — open board
 
-Open tasks only — 🚀 In Progress · 📋 Not Started · ⏸️ Blocked.
-Everything else (completed rows, board context) is in [todo_done.md](todo_done.md).
-
-| Task | Title | Status | Notes |
-|------|-------|--------|-------|
-| DEV-1698 | 🐞 **BUG — `OperatorAttempt.Fail`/`PhoneAttempt.Fail` never reset a sub-threshold failure count on a fresh window, only when an actual lock has expired.** `models/operator.go`'s `OperatorAttempt.Fail` and `models/auth.go`'s `PhoneAttempt.Fail` (identical shape in both) only zero `Failed` when `!a.LockedUntil.IsZero() && !now.Before(a.LockedUntil)` — i.e. only after a lock was actually *triggered* (crossing the 5-failure threshold) and has since expired. An address that stays *under* the threshold never sets `LockedUntil` at all, so its failure count carries forward across any gap, however long. Demonstrated live against the real `OperatorStore.RecordFailure` (sqlite, in-process, the same method `routes/operator.go`'s `OperatorSignIn` calls on every failed console sign-in): 3 failures on 2026-01-01, then one more failure exactly a year later (2027-01-01) — `next.Failed == 4`, not `1`, even though a full year separates them. Consequence, also demonstrated: two more failures right after that reads `Locked == true` — the address is locked out by only 2 genuinely-fresh failures compounding with 3 year-old stale ones, a false lock-out an operator would have no way to understand ("5 wrong passwords" when only 2 were recent). **Fix location**: `models/operator.go`'s `OperatorAttempt.Fail` and `models/auth.go`'s `PhoneAttempt.Fail` — reset `Failed` on elapsed time since the last failure as well as on lock expiry (needs a `LastFailedAt`-style field neither type currently carries, since today's `Fail` has no way to know how long ago the previous failure was). Pinning test: `operator_impl_test.go`'s `TestDEV1698_SubThresholdFailuresDoNotResetOnAFreshWindow` (real `OperatorStore`, sqlite; currently green, asserting the *broken* behavior — will fail once the fix lands, per the test's own comment). `PhoneAttempt.Fail` shares the identical code shape in `phoneattempt_impl.go`/`models/auth.go` but is not independently pinned — same fix, same file pattern, not re-demonstrated. | 📋 Not Started | — |
-
 DEV-1649 through DEV-1654 (the five-domain port + `routes/`, this repo) and
 DEV-1655 through DEV-1657 (the gateway wiring, HTTP cutover and migration
 archival) are all complete — see `todo_done.md` for this repo's own record,
