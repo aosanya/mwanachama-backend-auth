@@ -131,14 +131,25 @@ built on a `*gorm.DB`. `tables.go` wraps `gormstore.TableNames`/
 ## routes/ — HTTP surface
 
 Mirrors `mwanachama-backend-actor/routes` and `mwanachama-backend-comm/
-routes`: decode/call/encode handlers, `Route`/`Route.Pattern`, one `*Routes`
-function per domain plus a `Routes(Deps)` aggregator. See `routes/doc.go` for
+routes`: decode/call/encode handlers, one `*Routes` function per domain plus
+a `Routes(Deps)` aggregator. See `routes/doc.go` for
 the full portability classification — which of the gateway's original
 `auth_device_handlers.go`/`auth_handlers.go`/`auth_operator_handlers.go`/
 `auth_phone_handlers.go`/`auth_phone_region.go`/`auth_recovery_handlers.go`/
 `phone_salt_handlers.go`/`orgsettings_verification_handlers.go` handlers moved
 here and which stay gateway-side because they compose a domain this repo
 must not depend on (member/chapter/role/orgsettings/custody/comm).
+
+**The wire helpers and `Route` come from
+`mwanachama-backend-shared/httpwire`, not from this repo (DEV-1702).**
+`httpwire.WriteJSON`/`WriteErr`/`ReadJSON` replace the `writeJSON`/`writeErr`/
+`readJSON` this package used to carry, and `Route` is a type alias for
+`httpwire.Route` rather than a struct declared here — `httpwire.Route` is a
+field-name superset (it adds `Action`) with the same `Pattern` method, so the
+exported surface a mounting process sees is unchanged. `routes/wire.go` keeps
+only `randHex`, which is this repo's own. Do not reintroduce a local copy of
+any of the five; `mwanachama-backend-comm` still carries one and is tracked as
+S40 on shared's board.
 
 **Session-token minting is gateway-owned, not a domain this repo reaches
 into.** `routes/session.go`'s `SessionMinter` is the externally-supplied seam
@@ -168,13 +179,16 @@ same distinction itself around whatever wraps this route. See
   `Repository` implementation three ways for this reason, and
   `routes/*_test.go` is one file per domain rather than one
   `routes_test.go` for the same reason.
-- `go test ./...` (sqlite via `glebarez/sqlite`, migrated through
+- `make test` (`go test ./...`, sqlite via `glebarez/sqlite`, migrated through
   `Migrate`) is the expected way to verify a change here — do not reach for
   a real Postgres. `postgres_integration_test.go` (`//go:build postgres`,
   gated on `POSTGRES_URL`) exists for real Postgres-wiring coverage sqlite
   can't fully stand in for (sequence-minted ids, the `phone_salt_one_live`
-  partial index) but is not run by default. See
-  [[feedback_use_memory_backend_for_tests]].
+  partial index) and is run by `make test-pg`, not by `make test`. The tag is
+  `postgres`, matching the sibling repos, not `mwanachama-backend-catalog`'s
+  `integration`. See [[feedback_use_memory_backend_for_tests]].
+- The `Makefile` is `build`/`test`/`test-pg`/`vet`/`clean`, the same five
+  targets catalog's has.
 - Four-phase `documentation/` layout — see
   [documentation/README.md](documentation/README.md).
 - Route builder functions are named `<ModelType>Routes` (e.g.

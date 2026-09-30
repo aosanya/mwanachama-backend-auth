@@ -13,6 +13,7 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
+	"github.com/aosanya/mwanachama-backend-shared/httpwire"
 )
 
 // operatorLockFor is how long five consecutive wrong passwords bar an
@@ -48,13 +49,13 @@ func OperatorSignIn(ops mwanachamaauth.OperatorRepository, minter SessionMinter,
 			Email    string `json:"email"`
 			Password string `json:"password"`
 		}
-		if err := readJSON(r, &in); err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
+		if err := httpwire.ReadJSON(r, &in); err != nil {
+			httpwire.WriteErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		email := mwanachamaauth.Normalize(in.Email)
 		if email == "" || in.Password == "" {
-			writeErr(w, http.StatusBadRequest, "an email address and a password are required")
+			httpwire.WriteErr(w, http.StatusBadRequest, "an email address and a password are required")
 			return
 		}
 		now := time.Now()
@@ -65,7 +66,7 @@ func OperatorSignIn(ops mwanachamaauth.OperatorRepository, minter SessionMinter,
 		// single refusal above exists to close.
 		attempt, err := ops.Attempt(r.Context(), email)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		if attempt.Locked(now) {
@@ -84,14 +85,14 @@ func OperatorSignIn(ops mwanachamaauth.OperatorRepository, minter SessionMinter,
 		if !matched {
 			after, ferr := ops.RecordFailure(r.Context(), email, now, operatorLockFor)
 			if ferr != nil {
-				writeErr(w, http.StatusInternalServerError, "internal error")
+				httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 				return
 			}
 			if after.Locked(now) {
 				writeOperatorLocked(w, after, now)
 				return
 			}
-			writeJSON(w, http.StatusUnauthorized, map[string]any{
+			httpwire.WriteJSON(w, http.StatusUnauthorized, map[string]any{
 				"error":      signInRefusal,
 				"tries_left": after.TriesLeft(),
 			})
@@ -99,15 +100,15 @@ func OperatorSignIn(ops mwanachamaauth.OperatorRepository, minter SessionMinter,
 		}
 
 		if err := ops.ClearAttempts(r.Context(), email); err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		s, err := minter.Mint(r.Context(), cred.MemberID, "", ttl)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "could not mint a session")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "could not mint a session")
 			return
 		}
-		writeJSON(w, http.StatusCreated, s)
+		httpwire.WriteJSON(w, http.StatusCreated, s)
 	}
 }
 
@@ -119,7 +120,7 @@ func writeOperatorLocked(w http.ResponseWriter, a mwanachamaauth.OperatorAttempt
 		retry = 1
 	}
 	w.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
-	writeJSON(w, http.StatusTooManyRequests, map[string]any{
+	httpwire.WriteJSON(w, http.StatusTooManyRequests, map[string]any{
 		"error":        "too many wrong passwords — this sign-in is locked",
 		"locked_until": a.LockedUntil,
 		"tries_left":   0,
@@ -138,38 +139,38 @@ func ChangeOperatorPassword(ops mwanachamaauth.OperatorRepository, identity Iden
 			CurrentPassword string `json:"current_password"`
 			NewPassword     string `json:"new_password"`
 		}
-		if err := readJSON(r, &in); err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
+		if err := httpwire.ReadJSON(r, &in); err != nil {
+			httpwire.WriteErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		email := mwanachamaauth.Normalize(in.Email)
 		cred, hash, err := ops.Verifier(r.Context(), email)
 		if err != nil {
-			writeErr(w, http.StatusUnauthorized, signInRefusal)
+			httpwire.WriteErr(w, http.StatusUnauthorized, signInRefusal)
 			return
 		}
 		// The credential must be the caller's own, taken off identity —
 		// never off the body.
 		if cred.MemberID != identity.CallerID(r) {
-			writeErr(w, http.StatusForbidden, "that console sign-in is not yours")
+			httpwire.WriteErr(w, http.StatusForbidden, "that console sign-in is not yours")
 			return
 		}
 		ok, err := mwanachamaauth.Verify(hash, in.CurrentPassword)
 		if err != nil || !ok {
-			writeErr(w, http.StatusUnauthorized, signInRefusal)
+			httpwire.WriteErr(w, http.StatusUnauthorized, signInRefusal)
 			return
 		}
 		newHash, err := mwanachamaauth.Hash(in.NewPassword)
 		if errors.Is(err, mwanachamaauth.ErrPasswordTooShort) {
-			writeErr(w, http.StatusBadRequest, err.Error())
+			httpwire.WriteErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		if err := ops.SetPassword(r.Context(), cred.ID, newHash); err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -181,11 +182,11 @@ func DisableOperatorCredential(ops mwanachamaauth.OperatorRepository) http.Handl
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ops.Disable(r.Context(), r.PathValue("credentialID"))
 		if errors.Is(err, mwanachamaauth.ErrOperatorNotFound) {
-			writeErr(w, http.StatusNotFound, err.Error())
+			httpwire.WriteErr(w, http.StatusNotFound, err.Error())
 			return
 		}
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -197,10 +198,10 @@ func ListOperatorCredentials(ops mwanachamaauth.OperatorRepository) http.Handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		out, err := ops.ListForMember(r.Context(), r.PathValue("memberID"))
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
-		writeJSON(w, http.StatusOK, out)
+		httpwire.WriteJSON(w, http.StatusOK, out)
 	}
 }
 

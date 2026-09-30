@@ -82,7 +82,6 @@ func TestPostgresDeviceIDsAreSequenceMinted(t *testing.T) {
 // Go-level pre-check PhoneSaltStore.Provision also runs.
 func TestPostgresPhoneSaltOneLiveIsDatabaseEnforced(t *testing.T) {
 	db, tables := newPostgresDB(t)
-	ctx := context.Background()
 
 	// Bypass the Go-level guard entirely: insert two "live" rows directly.
 	if err := db.Table(tables.PhoneSalts).Create(map[string]any{

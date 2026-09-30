@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/aosanya/mwanachama-backend-shared v0.0.0
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -31,3 +32,5 @@ require (
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.23.1 // indirect
 )
+
+replace github.com/aosanya/mwanachama-backend-shared => ../mwanachama-backend-shared

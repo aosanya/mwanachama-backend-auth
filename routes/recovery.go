@@ -8,6 +8,7 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
+	"github.com/aosanya/mwanachama-backend-shared/httpwire"
 )
 
 // RecoveryRequest handles POST /recovery/request.
@@ -24,8 +25,8 @@ func RecoveryRequest(auth mwanachamaauth.AuthRepository, echoChallengeCode bool)
 		var in struct {
 			MemberID string `json:"member_id"`
 		}
-		if err := readJSON(r, &in); err != nil || in.MemberID == "" {
-			writeErr(w, http.StatusBadRequest, "member_id required")
+		if err := httpwire.ReadJSON(r, &in); err != nil || in.MemberID == "" {
+			httpwire.WriteErr(w, http.StatusBadRequest, "member_id required")
 			return
 		}
 		c, err := auth.CreateChallenge(r.Context(), mwanachamaauth.Challenge{
@@ -48,7 +49,7 @@ func RecoveryRequest(auth mwanachamaauth.AuthRepository, echoChallengeCode bool)
 		if echoChallengeCode {
 			body["secret"] = c.Secret
 		}
-		writeJSON(w, http.StatusCreated, body)
+		httpwire.WriteJSON(w, http.StatusCreated, body)
 	}
 }
 
@@ -66,17 +67,17 @@ func RecoveryVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, tt
 			ChallengeID string `json:"challenge_id"`
 			Secret      string `json:"secret"`
 		}
-		if err := readJSON(r, &in); err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
+		if err := httpwire.ReadJSON(r, &in); err != nil {
+			httpwire.WriteErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		c, err := auth.ConsumeChallenge(r.Context(), in.ChallengeID, time.Now())
 		if err != nil {
-			writeErr(w, http.StatusUnauthorized, err.Error())
+			httpwire.WriteErr(w, http.StatusUnauthorized, err.Error())
 			return
 		}
 		if c.Kind != mwanachamaauth.KindRecovery || c.Secret != in.Secret {
-			writeErr(w, http.StatusUnauthorized, "secret mismatch")
+			httpwire.WriteErr(w, http.StatusUnauthorized, "secret mismatch")
 			return
 		}
 		// keepID is empty: this door mints no device of its own, so every
@@ -87,10 +88,10 @@ func RecoveryVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, tt
 		}
 		s, err := minter.Mint(r.Context(), c.MemberID, "", ttl)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "could not mint a session")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "could not mint a session")
 			return
 		}
-		writeJSON(w, http.StatusCreated, s)
+		httpwire.WriteJSON(w, http.StatusCreated, s)
 	}
 }
 

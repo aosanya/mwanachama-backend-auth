@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
+	"github.com/aosanya/mwanachama-backend-shared/httpwire"
 )
 
 // SetVerification handles PUT /members/{memberID}/verification — how an
@@ -28,8 +29,8 @@ func SetVerification(verification mwanachamaauth.VerificationRepository) http.Ha
 			Status mwanachamaauth.VerificationStatus `json:"status"`
 			Note   string                            `json:"note"`
 		}
-		if err := readJSON(r, &in); err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
+		if err := httpwire.ReadJSON(r, &in); err != nil {
+			httpwire.WriteErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		memberID := r.PathValue("memberID")
@@ -39,7 +40,7 @@ func SetVerification(verification mwanachamaauth.VerificationRepository) http.Ha
 		// upsert and this cannot 404 a member who has never applied.
 		cur, err := verification.Get(r.Context(), memberID)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		cur.MemberID = memberID
@@ -48,10 +49,10 @@ func SetVerification(verification mwanachamaauth.VerificationRepository) http.Ha
 
 		out, err := verification.Set(r.Context(), cur)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
-		writeJSON(w, http.StatusOK, out)
+		httpwire.WriteJSON(w, http.StatusOK, out)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
+	"github.com/aosanya/mwanachama-backend-shared/httpwire"
 )
 
 // saltView is one row of the salt register — every field an admin screen
@@ -48,7 +49,7 @@ func ListPhoneSalts(salts mwanachamaauth.PhoneSaltRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		list, err := salts.List(r.Context())
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "internal error")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		now := time.Now().UTC()
@@ -56,7 +57,7 @@ func ListPhoneSalts(salts mwanachamaauth.PhoneSaltRepository) http.HandlerFunc {
 		for _, s := range list {
 			out = append(out, newSaltView(s, now))
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"salts": out})
+		httpwire.WriteJSON(w, http.StatusOK, map[string]any{"salts": out})
 	}
 }
 

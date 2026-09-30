@@ -1,29 +1,13 @@
 package routes
 
 import (
-	"net/http"
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
+	"github.com/aosanya/mwanachama-backend-shared/httpwire"
 )
 
-// Route is one address this package answers, relative to wherever the
-// mounting process prefixes it (e.g. "/v1/auth") — enough to build one
-// *http.ServeMux entry from, without the mounting process hand-spelling
-// each path/method pair itself. Mirrors mwanachama-backend-actor's and
-// mwanachama-backend-comm's identical Route type.
-type Route struct {
-	Method  string
-	Path    string
-	Handler http.HandlerFunc
-}
-
-// Pattern returns the http.ServeMux registration pattern for this route once
-// mounted under prefix — r.Method+" "+prefix+r.Path, net/http's own
-// "METHOD /path" syntax (Go 1.22+ mux patterns).
-func (r Route) Pattern(prefix string) string {
-	return r.Method + " " + prefix + r.Path
-}
+type Route = httpwire.Route
 
 // Deps bundles every externally-supplied fact [Routes] needs to build the
 // whole set at once — the four repositories plus the gateway-owned seams

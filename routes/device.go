@@ -12,6 +12,7 @@ import (
 	"time"
 
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
+	"github.com/aosanya/mwanachama-backend-shared/httpwire"
 )
 
 // authStatusFor maps this repo's auth error sentinels to a status code.
@@ -31,10 +32,10 @@ func authStatusFor(err error) int {
 func writeAuthErr(w http.ResponseWriter, err error) {
 	code := authStatusFor(err)
 	if code == http.StatusInternalServerError {
-		writeErr(w, code, "internal error")
+		httpwire.WriteErr(w, code, "internal error")
 		return
 	}
-	writeErr(w, code, err.Error())
+	httpwire.WriteErr(w, code, err.Error())
 }
 
 // DeviceChallenge handles POST {deviceID}/challenge.
@@ -50,7 +51,7 @@ func DeviceChallenge(auth mwanachamaauth.AuthRepository) http.HandlerFunc {
 		id := r.PathValue("deviceID")
 		dev, err := auth.GetDevice(r.Context(), id)
 		if err != nil || dev.IsSignedOut() {
-			writeErr(w, http.StatusNotFound, "device not found")
+			httpwire.WriteErr(w, http.StatusNotFound, "device not found")
 			return
 		}
 		c, err := auth.CreateChallenge(r.Context(), mwanachamaauth.Challenge{
@@ -61,7 +62,7 @@ func DeviceChallenge(auth mwanachamaauth.AuthRepository) http.HandlerFunc {
 			writeAuthErr(w, err)
 			return
 		}
-		writeJSON(w, http.StatusCreated, c.Public())
+		httpwire.WriteJSON(w, http.StatusCreated, c.Public())
 	}
 }
 
@@ -83,8 +84,8 @@ func DeviceVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl 
 			ChallengeID string `json:"challenge_id"`
 			Signature   string `json:"signature"`
 		}
-		if err := readJSON(r, &in); err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
+		if err := httpwire.ReadJSON(r, &in); err != nil {
+			httpwire.WriteErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		dev, err := auth.GetDevice(r.Context(), deviceID)
@@ -92,20 +93,20 @@ func DeviceVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl 
 		// challenge minted a moment before the sign-out must not still be
 		// spendable.
 		if err != nil || dev.IsSignedOut() {
-			writeErr(w, http.StatusUnauthorized, "device not found")
+			httpwire.WriteErr(w, http.StatusUnauthorized, "device not found")
 			return
 		}
 		c, err := auth.ConsumeChallenge(r.Context(), in.ChallengeID, time.Now())
 		if err != nil {
-			writeErr(w, http.StatusUnauthorized, err.Error())
+			httpwire.WriteErr(w, http.StatusUnauthorized, err.Error())
 			return
 		}
 		if c.DeviceID != deviceID || c.Kind != mwanachamaauth.KindDevice {
-			writeErr(w, http.StatusUnauthorized, "challenge mismatch")
+			httpwire.WriteErr(w, http.StatusUnauthorized, "challenge mismatch")
 			return
 		}
 		if in.Signature == "" {
-			writeErr(w, http.StatusUnauthorized, "signature required")
+			httpwire.WriteErr(w, http.StatusUnauthorized, "signature required")
 			return
 		}
 		var proofErr error
@@ -118,15 +119,15 @@ func DeviceVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl 
 			// One refusal for every way the proof can be wrong — see
 			// mwanachamaauth.ErrKeyUnusable/ErrProofInvalid's own doc
 			// comments for why the caller is never told which.
-			writeErr(w, http.StatusUnauthorized, "device proof invalid")
+			httpwire.WriteErr(w, http.StatusUnauthorized, "device proof invalid")
 			return
 		}
 		s, err := minter.Mint(r.Context(), c.MemberID, deviceID, ttl)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "could not mint a session")
+			httpwire.WriteErr(w, http.StatusInternalServerError, "could not mint a session")
 			return
 		}
-		writeJSON(w, http.StatusCreated, s)
+		httpwire.WriteJSON(w, http.StatusCreated, s)
 	}
 }
 
