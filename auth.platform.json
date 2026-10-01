@@ -1,0 +1,77 @@
+{
+  "module": "auth",
+  "domain": "platform",
+  "instance": "platform",
+  "mount": "auth",
+  "objects": [
+    {
+      "role": "device",
+      "name": "device",
+      "table": "devices",
+      "description": "A handset or browser a member has signed in on.",
+      "indexes": [
+        {
+          "name": "by_subject",
+          "description": "Every device one member holds, which is what a recovery sweeps and what the device list reads.",
+          "fields": ["subject_id"]
+        }
+      ]
+    },
+    {
+      "role": "challenge",
+      "name": "challenge",
+      "table": "challenges",
+      "description": "An outstanding sign-in or recovery challenge.",
+      "indexes": [
+        {
+          "name": "by_phone",
+          "description": "Finds the outstanding challenge for a number during the verify step.",
+          "fields": ["phone"]
+        }
+      ]
+    },
+    {
+      "role": "phone_attempt",
+      "name": "phone_attempt",
+      "table": "phone_attempts",
+      "description": "Wrong-code counters for member sign-in by phone."
+    },
+    {
+      "role": "phone_binding",
+      "name": "phone_binding",
+      "table": "phone_bindings",
+      "description": "Which member a phone number reaches."
+    },
+    {
+      "role": "credential",
+      "name": "operator_credential",
+      "table": "operator_credentials",
+      "description": "A staff console sign-in for the platform's own operators.",
+      "indexes": [
+        {
+          "name": "by_subject",
+          "description": "Lists the credentials one person holds.",
+          "fields": ["subject_id"]
+        }
+      ]
+    },
+    {
+      "role": "credential_attempt",
+      "name": "operator_attempt",
+      "table": "operator_attempts",
+      "description": "Wrong-password counters for the staff console."
+    },
+    {
+      "role": "verification",
+      "name": "verification",
+      "table": "verifications",
+      "description": "Whether a member's identity has been checked by staff."
+    },
+    {
+      "role": "salt",
+      "name": "phone_salt",
+      "table": "phone_salts",
+      "description": "The key members' phone numbers are hashed under."
+    }
+  ]
+}

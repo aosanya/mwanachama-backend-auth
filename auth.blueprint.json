@@ -1,0 +1,325 @@
+{
+  "module": "auth",
+  "objects": [
+    {
+      "role": "device",
+      "description": "A client install bound to a subject, which proves itself by signing a nonce. Registering a new one is how a subject signs in again after a sign-out; a device's row is never deleted, so the record of what it was survives the door being shut.",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Storage key, minted by the module.",
+          "primary": true
+        },
+        {
+          "name": "subject_id",
+          "type": "string",
+          "description": "Who holds this device. Read server-side off the stored challenge when a session is minted, never taken from the client.",
+          "required": true
+        },
+        {
+          "name": "public_key",
+          "type": "string",
+          "description": "The Ed25519 key this device's answer to a challenge is verified against. Accepted as standard base64, raw base64url or hex. A device registered before the signature check was real carries a placeholder here and can no longer sign in, which is the intended posture.",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "What the holder calls this handset, shown on the device list."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "description": "When this device was registered.",
+          "required": true
+        },
+        {
+          "name": "signed_out_at",
+          "type": "timestamp",
+          "description": "When this device's life ended, or absent while it is live. A signed-out device may never challenge or verify again. Nullable rather than defaulted, because a zero instant reads as a sign-out and is not one.",
+          "nullable": true
+        },
+        {
+          "name": "signed_out_by",
+          "type": "enum",
+          "description": "Which door ended this device: 'self' is the handset signing itself out, 'recovery' is a successful recovery ejecting every other handset. Never guessed — the screens that announce a sign-out open with this fact, and rendering a self-sign-out as a recovery alarms somebody who did it themselves.",
+          "values": [
+            "self",
+            "recovery"
+          ],
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "role": "challenge",
+      "description": "A short-lived secret a client must answer to prove control of a device or of a phone number. One use only: consuming it is what stops the same answer being replayed.",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Storage key, minted by the module.",
+          "primary": true
+        },
+        {
+          "name": "kind",
+          "type": "enum",
+          "description": "Which flow this challenge belongs to.",
+          "values": [
+            "device",
+            "phone",
+            "recovery"
+          ],
+          "required": true
+        },
+        {
+          "name": "device_id",
+          "type": "string",
+          "description": "The device being proved, for a device challenge.",
+          "nullable": true
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "description": "The number being proved, for a phone or recovery challenge. Canonical E.164.",
+          "nullable": true
+        },
+        {
+          "name": "secret",
+          "type": "string",
+          "description": "The nonce a device signs, or the code a phone holder types back.",
+          "required": true
+        },
+        {
+          "name": "subject_id",
+          "type": "string",
+          "description": "Who this challenge is about. Never written to a caller who has not yet proved anything: a public door answering it lets an unauthenticated reader walk the id space and build a device-to-subject map.",
+          "nullable": true
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp",
+          "description": "When this challenge stops being answerable.",
+          "required": true
+        },
+        {
+          "name": "consumed",
+          "type": "bool",
+          "description": "Whether this challenge has already been spent."
+        }
+      ]
+    },
+    {
+      "role": "phone_attempt",
+      "description": "One phone number's consecutive-wrong-code state. Keyed on the number rather than on the challenge or the caller, so retrying from another device does not reset the count.",
+      "fields": [
+        {
+          "name": "phone",
+          "type": "string",
+          "description": "The number the failures are counted against. Canonical E.164.",
+          "primary": true
+        },
+        {
+          "name": "failed_attempts",
+          "type": "int",
+          "description": "How many consecutive wrong codes this number has produced."
+        },
+        {
+          "name": "locked_until",
+          "type": "timestamp",
+          "description": "When this number stops being barred, or absent if it is not barred.",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "description": "When this counter last moved.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "role": "phone_binding",
+      "description": "The standing link from a phone number to the subject that number reaches. Written on the verify path and not on the challenge path, so asking whether a number is known does not itself create a subject.",
+      "fields": [
+        {
+          "name": "phone",
+          "type": "string",
+          "description": "The number. Canonical E.164.",
+          "primary": true
+        },
+        {
+          "name": "subject_id",
+          "type": "string",
+          "description": "The subject this number reaches.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "role": "credential",
+      "description": "An email-and-password credential for an operator console. The only stored secret this module holds, kept as an argon2id digest and never as a password.",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Storage key, minted by the module.",
+          "primary": true
+        },
+        {
+          "name": "subject_id",
+          "type": "string",
+          "description": "Who this credential signs in as.",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "description": "The normalised address this credential is found by. Unique, so one address is one credential.",
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "password_hash",
+          "type": "string",
+          "description": "The argon2id digest of the password, in PHC string format. Never copied onto anything a route answers with.",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "description": "When this credential was issued.",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "description": "When it was last changed. Stamped by the store, never honoured from a caller.",
+          "required": true
+        },
+        {
+          "name": "disabled_at",
+          "type": "timestamp",
+          "description": "When this credential stopped being usable, or absent while it works.",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "role": "credential_attempt",
+      "description": "One address's consecutive-wrong-password state. Counted for an address with no credential exactly as for a real one, so a wrong password and an address nobody holds are indistinguishable from outside.",
+      "fields": [
+        {
+          "name": "email",
+          "type": "string",
+          "description": "The normalised address the failures are counted against.",
+          "primary": true
+        },
+        {
+          "name": "failed",
+          "type": "int",
+          "description": "How many consecutive wrong passwords this address has produced."
+        },
+        {
+          "name": "locked_until",
+          "type": "timestamp",
+          "description": "When this address stops being barred, or absent if it is not barred.",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "role": "verification",
+      "description": "A subject's standing as checked by a human reviewer. A subject nobody has reviewed has no row, and reads back as unverified rather than as missing.",
+      "fields": [
+        {
+          "name": "subject_id",
+          "type": "string",
+          "description": "Who was reviewed.",
+          "primary": true
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "description": "Where the review stands.",
+          "values": [
+            "unverified",
+            "pending",
+            "verified",
+            "rejected"
+          ],
+          "required": true
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "description": "The reviewer's own words, shown beside the decision."
+        },
+        {
+          "name": "full_name",
+          "type": "string",
+          "description": "The name the subject gave, as checked."
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "description": "The number the subject gave, as checked."
+        },
+        {
+          "name": "workflow_id",
+          "type": "string",
+          "description": "The review process this decision came out of."
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "description": "When this standing last changed. Stamped by the store, never honoured from a caller.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "role": "salt",
+      "description": "One version of the key phone numbers are hashed under, so a stored number is a digest and not a number. Exactly one version is live at a time; a retired version keeps its row, because the digests naming it must still resolve and their staleness is only legible while the version they name is visibly retired.",
+      "fields": [
+        {
+          "name": "id",
+          "type": "int",
+          "description": "The version operators say aloud: salt 1, salt 2. Rows elsewhere name this number, and comparing it against the live version is what makes a stale digest detectable.",
+          "primary": true
+        },
+        {
+          "name": "secret",
+          "type": "bytes",
+          "description": "The raw key material. Opaque bytes, not text: this is the one value in the module that is a key rather than a record of one, and the only read of it returns a digest.",
+          "required": true
+        },
+        {
+          "name": "set_at",
+          "type": "timestamp",
+          "description": "When this version began. An admin screen draws its age off this and nothing else.",
+          "required": true
+        },
+        {
+          "name": "set_by",
+          "type": "string",
+          "description": "Who set it, or absent for the first version, which provisioning writes before there is anybody to name.",
+          "nullable": true
+        },
+        {
+          "name": "retired_at",
+          "type": "timestamp",
+          "description": "When this version stopped being live, or absent while it is live.",
+          "nullable": true
+        },
+        {
+          "name": "retired_by",
+          "type": "string",
+          "description": "Who retired it. Paired with the retirement instant: a version cannot be retired without naming who did it.",
+          "nullable": true
+        }
+      ]
+    }
+  ]
+}

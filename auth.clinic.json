@@ -1,0 +1,109 @@
+{
+  "module": "auth",
+  "domain": "clinic",
+  "instance": "clinic",
+  "mount": "frontdesk",
+  "objects": [
+    {
+      "role": "device",
+      "name": "handset",
+      "table": "handsets",
+      "description": "A phone a patient books and checks in from.",
+      "indexes": [
+        {
+          "name": "by_patient",
+          "description": "Every handset one patient has used, so a lost phone can be cut off.",
+          "fields": ["subject_id"]
+        }
+      ]
+    },
+    {
+      "role": "challenge",
+      "name": "one_time_code",
+      "table": "one_time_codes",
+      "description": "A code texted to a patient to confirm their number.",
+      "indexes": [
+        {
+          "name": "by_number",
+          "description": "Finds the outstanding code for a number at check-in.",
+          "fields": ["phone"]
+        }
+      ]
+    },
+    {
+      "role": "phone_attempt",
+      "name": "code_failure",
+      "table": "code_failures",
+      "description": "Wrong-code counters, so a mistyped number cannot be hammered."
+    },
+    {
+      "role": "phone_binding",
+      "name": "patient_number",
+      "table": "patient_numbers",
+      "description": "Which patient record a number reaches."
+    },
+    {
+      "role": "credential",
+      "name": "clinician_login",
+      "table": "clinician_logins",
+      "description": "A clinician's sign-in to the front-desk system.",
+      "indexes": [
+        {
+          "name": "by_clinician",
+          "description": "Lists the logins one clinician holds.",
+          "fields": ["subject_id"]
+        }
+      ]
+    },
+    {
+      "role": "credential_attempt",
+      "name": "login_failure",
+      "table": "login_failures",
+      "description": "Wrong-password counters for clinician sign-in."
+    },
+    {
+      "role": "verification",
+      "name": "identity_check",
+      "table": "identity_checks",
+      "description": "Whether a patient's identity documents have been seen at the desk.",
+      "indexes": [
+        {
+          "name": "by_standing",
+          "description": "The desk's work queue, which reads every check still waiting.",
+          "fields": ["status"]
+        }
+      ]
+    },
+    {
+      "role": "salt",
+      "name": "number_key",
+      "table": "number_keys",
+      "description": "The key patients' phone numbers are hashed under."
+    },
+    {
+      "name": "consent",
+      "table": "consents",
+      "description": "A clinic's own object, with no role in the module: which privacy notice a patient has agreed to. Declared here to show a domain adding a table of its own rather than asking the module for a field.",
+      "fields": [
+        {
+          "name": "subject_id",
+          "type": "string",
+          "description": "The patient who agreed.",
+          "primary": true
+        },
+        {
+          "name": "notice_version",
+          "type": "string",
+          "description": "Which version of the notice they saw.",
+          "primary": true
+        },
+        {
+          "name": "agreed_at",
+          "type": "timestamp",
+          "description": "When they agreed.",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
