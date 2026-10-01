@@ -130,23 +130,3 @@ func DeviceVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl 
 		httpwire.WriteJSON(w, http.StatusCreated, s)
 	}
 }
-
-// DeviceChallengeRoutes is DeviceChallenge alone, addressed under
-// /devices/{deviceID}/challenge.
-func DeviceChallengeRoutes(auth mwanachamaauth.AuthRepository) []Route {
-	return []Route{
-		{Method: http.MethodPost, Path: "/devices/{deviceID}/challenge", Handler: DeviceChallenge(auth)},
-	}
-}
-
-// DeviceVerifyRoutes is DeviceVerify alone, addressed under
-// /devices/{deviceID}/verify. Returned separately from
-// DeviceChallengeRoutes because the gateway wraps the two with different
-// middleware (both are public, but a mounting process's rate limiting or
-// logging policy may still differ between "ask for a challenge" and "spend
-// one").
-func DeviceVerifyRoutes(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl time.Duration, allowUnsignedProof bool) []Route {
-	return []Route{
-		{Method: http.MethodPost, Path: "/devices/{deviceID}/verify", Handler: DeviceVerify(auth, minter, ttl, allowUnsignedProof)},
-	}
-}

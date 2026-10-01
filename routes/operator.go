@@ -204,27 +204,3 @@ func ListOperatorCredentials(ops mwanachamaauth.OperatorRepository) http.Handler
 		httpwire.WriteJSON(w, http.StatusOK, out)
 	}
 }
-
-// OperatorSignInRoutes is OperatorSignIn alone, addressed under
-// /operator/signin. Returned separately from OperatorCredentialRoutes
-// because sign-in carries no caller-identity gate at all (it is how a
-// session comes into being) while every credential-management route needs
-// one wrapped around it.
-func OperatorSignInRoutes(ops mwanachamaauth.OperatorRepository, minter SessionMinter, ttl time.Duration) []Route {
-	return []Route{
-		{Method: http.MethodPost, Path: "/operator/signin", Handler: OperatorSignIn(ops, minter, ttl)},
-	}
-}
-
-// OperatorCredentialRoutes is the three credential-management operations —
-// change-password, disable, list — addressed under /operator/password,
-// /operator/credentials/{credentialID} and
-// /members/{subjectID}/operator-credentials. createOperatorCredential is
-// deliberately not here; see doc.go.
-func OperatorCredentialRoutes(ops mwanachamaauth.OperatorRepository, identity Identity) []Route {
-	return []Route{
-		{Method: http.MethodPut, Path: "/operator/password", Handler: ChangeOperatorPassword(ops, identity)},
-		{Method: http.MethodDelete, Path: "/operator/credentials/{credentialID}", Handler: DisableOperatorCredential(ops)},
-		{Method: http.MethodGet, Path: "/members/{subjectID}/operator-credentials", Handler: ListOperatorCredentials(ops)},
-	}
-}

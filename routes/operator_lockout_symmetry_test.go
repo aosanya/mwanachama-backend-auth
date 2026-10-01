@@ -60,7 +60,14 @@ func TestOperatorSignIn_NoCredentialAddressIsIndistinguishableFromWrongPassword(
 	}
 
 	mux := http.NewServeMux()
-	for _, rt := range routes.OperatorSignInRoutes(ops, &fakeMinter{}, time.Hour) {
+	all, err := routes.Build(routes.Deps{Operators: ops, Minter: &fakeMinter{}, TTL: time.Hour})
+	if err != nil {
+		t.Fatalf("routes.Build: %v", err)
+	}
+	for _, rt := range all {
+		if rt.Action != "auth.operator.signin" {
+			continue
+		}
 		mux.HandleFunc(rt.Pattern(""), rt.Handler)
 	}
 	srv := httptest.NewServer(mux)

@@ -55,11 +55,3 @@ func SetVerification(verification mwanachamaauth.VerificationRepository) http.Ha
 		httpwire.WriteJSON(w, http.StatusOK, out)
 	}
 }
-
-// VerificationRoutes is SetVerification alone, addressed under
-// /members/{subjectID}/verification.
-func VerificationRoutes(verification mwanachamaauth.VerificationRepository) []Route {
-	return []Route{
-		{Method: http.MethodPut, Path: "/members/{subjectID}/verification", Handler: SetVerification(verification)},
-	}
-}

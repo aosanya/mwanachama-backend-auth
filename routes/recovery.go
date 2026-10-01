@@ -94,12 +94,3 @@ func RecoveryVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, tt
 		httpwire.WriteJSON(w, http.StatusCreated, s)
 	}
 }
-
-// RecoveryRoutes is RecoveryRequest + RecoveryVerify, addressed under
-// /recovery/request and /recovery/verify.
-func RecoveryRoutes(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl time.Duration, echoChallengeCode bool) []Route {
-	return []Route{
-		{Method: http.MethodPost, Path: "/recovery/request", Handler: RecoveryRequest(auth, echoChallengeCode)},
-		{Method: http.MethodPost, Path: "/recovery/verify", Handler: RecoveryVerify(auth, minter, ttl)},
-	}
-}

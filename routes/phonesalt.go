@@ -60,10 +60,3 @@ func ListPhoneSalts(salts mwanachamaauth.PhoneSaltRepository) http.HandlerFunc {
 		httpwire.WriteJSON(w, http.StatusOK, map[string]any{"salts": out})
 	}
 }
-
-// PhoneSaltRoutes is ListPhoneSalts alone, addressed under /phone-salts.
-func PhoneSaltRoutes(salts mwanachamaauth.PhoneSaltRepository) []Route {
-	return []Route{
-		{Method: http.MethodGet, Path: "/phone-salts", Handler: ListPhoneSalts(salts)},
-	}
-}

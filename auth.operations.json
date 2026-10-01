@@ -1,0 +1,109 @@
+{
+  "operations": {
+    "device_challenge": {
+      "method": "POST",
+      "path": "/devices/{deviceID}/challenge",
+      "handled": true,
+      "action": "auth.device.challenge",
+      "status": 201,
+      "title": "Ask a device for proof",
+      "description": "Mints a nonce for a device to sign. Public by necessity: proving a device is how a session is first obtained, so there is no session to check. A signed-out device is answered exactly as an unknown one, and the answer is a redacted projection that never names the subject."
+    },
+    "device_verify": {
+      "method": "POST",
+      "path": "/devices/{deviceID}/verify",
+      "handled": true,
+      "action": "auth.device.verify",
+      "status": 201,
+      "title": "Spend a device challenge",
+      "description": "Checks an Ed25519 signature over the nonce against the device's registered key and mints a session. Every way the proof can be wrong is one refusal, so a caller is never told which."
+    },
+    "recovery_request": {
+      "method": "POST",
+      "path": "/recovery/request",
+      "handled": true,
+      "action": "auth.recovery.request",
+      "status": 201,
+      "title": "Begin a recovery",
+      "description": "Mints a recovery challenge for a phone number. Whether the secret is echoed back is the mounting process's dev-only choice and is withheld by default."
+    },
+    "recovery_verify": {
+      "method": "POST",
+      "path": "/recovery/verify",
+      "handled": true,
+      "action": "auth.recovery.verify",
+      "status": 201,
+      "title": "Complete a recovery",
+      "description": "Spends a recovery challenge, mints a session, and ends every other device the subject held."
+    },
+    "operator_signin": {
+      "method": "POST",
+      "path": "/operator/signin",
+      "handled": true,
+      "action": "auth.operator.signin",
+      "status": 201,
+      "title": "Sign in to an operator console",
+      "description": "Verifies an address and password and mints a session. An address that holds no credential answers byte-for-byte as a wrong password, including the attempt counter, so the refusal never says which addresses are real."
+    },
+    "operator_password_change": {
+      "method": "PUT",
+      "path": "/operator/password",
+      "handled": true,
+      "action": "auth.operator.password_change",
+      "status": 204,
+      "title": "Change an operator password",
+      "description": "Replaces the caller's own verifier. It does not clear a lock-out, because a password change is not proof that the guesser has gone."
+    },
+    "operator_credential_disable": {
+      "method": "DELETE",
+      "path": "/operator/credentials/{credentialID}",
+      "handled": true,
+      "action": "auth.operator_credential.disable",
+      "status": 204,
+      "title": "Withdraw an operator credential",
+      "description": "Withdraws access in place and idempotently, keeping the instant access first ended rather than moving it forward."
+    },
+    "operator_credential_list": {
+      "method": "GET",
+      "path": "/members/{subjectID}/operator-credentials",
+      "handled": true,
+      "action": "auth.operator_credential.list",
+      "status": 200,
+      "title": "List a subject's operator credentials",
+      "description": "Every credential a subject holds, withdrawn ones included: a withdrawn credential is part of the record of who could once sign in."
+    },
+    "verification_set": {
+      "method": "PUT",
+      "path": "/members/{subjectID}/verification",
+      "handled": true,
+      "action": "auth.verification.set",
+      "status": 200,
+      "title": "Record a verification decision",
+      "description": "Sets a subject's standing as checked by a reviewer. The instant is stamped by the store and never honoured from the caller."
+    },
+    "phone_salt_list": {
+      "method": "GET",
+      "path": "/phone-salts",
+      "handled": true,
+      "action": "auth.phone_salt.list",
+      "status": 200,
+      "title": "List the phone-hashing salts",
+      "description": "Every salt version, newest first, without any secret."
+    }
+  },
+  "errors": {
+    "ErrAuthNotFound": 404,
+    "ErrAuthChallengeExpired": 401,
+    "ErrAuthDeviceSignedOut": 401,
+    "ErrAuthSignOutReasonRequired": 401,
+    "ErrOperatorNotFound": 401,
+    "ErrOperatorDisabled": 401,
+    "ErrOperatorEmailTaken": 409,
+    "ErrPasswordTooShort": 400,
+    "ErrVerificationNotFound": 404,
+    "ErrPhoneSaltNotFound": 404,
+    "ErrPhoneSaltAlreadyLive": 409,
+    "ErrPhoneSaltRetired": 409,
+    "ErrPhoneSaltNoActor": 400
+  }
+}

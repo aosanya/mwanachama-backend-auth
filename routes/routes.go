@@ -1,22 +1,19 @@
 package routes
 
 import (
+	"fmt"
+	"net/http"
+	"sort"
 	"time"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
+	"github.com/aosanya/mwanachama-backend-shared/dispatch"
 	"github.com/aosanya/mwanachama-backend-shared/httpwire"
+
+	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 )
 
 type Route = httpwire.Route
 
-// Deps bundles every externally-supplied fact [Routes] needs to build the
-// whole set at once — the four repositories plus the gateway-owned seams
-// (SessionMinter, Identity, the session ttl, and the two dev-only bools) —
-// so a mounting process that wants everything in one loop does not have to
-// hand-spell seven constructor calls itself. A mounting process that wants
-// to wrap different domains in different policy (the gateway does, today)
-// calls the per-domain *Routes functions directly instead, the same choice
-// actor's and comm's own Routes aggregators leave open.
 type Deps struct {
 	Auth         mwanachamaauth.AuthRepository
 	Operators    mwanachamaauth.OperatorRepository
@@ -28,25 +25,86 @@ type Deps struct {
 
 	Identity Identity
 
-	// AllowUnsignedDeviceProof is DeviceVerify's dev-only bypass. False (the
-	// zero value) means signatures ARE checked.
 	AllowUnsignedDeviceProof bool
-	// EchoChallengeCode is RecoveryRequest's dev-only "write the secret into
-	// the response body" flag. False (the zero value) means it is withheld.
-	EchoChallengeCode bool
+	EchoChallengeCode        bool
 }
 
-// Routes is every address this package answers today, built from d: device
-// challenge/verify, recovery request/verify, operator sign-in and credential
-// management, plain verification set, and the phone-salt list — concatenated
-// in the order their own *Routes functions are documented above.
+var AnonymousActions = []string{
+	"auth.device.challenge",
+	"auth.device.verify",
+	"auth.recovery.request",
+	"auth.recovery.verify",
+	"auth.operator.signin",
+}
+
+func handlers(d Deps) map[string]http.HandlerFunc {
+	return map[string]http.HandlerFunc{
+		"auth.device.challenge":            DeviceChallenge(d.Auth),
+		"auth.device.verify":               DeviceVerify(d.Auth, d.Minter, d.TTL, d.AllowUnsignedDeviceProof),
+		"auth.recovery.request":            RecoveryRequest(d.Auth, d.EchoChallengeCode),
+		"auth.recovery.verify":             RecoveryVerify(d.Auth, d.Minter, d.TTL),
+		"auth.operator.signin":             OperatorSignIn(d.Operators, d.Minter, d.TTL),
+		"auth.operator.password_change":    ChangeOperatorPassword(d.Operators, d.Identity),
+		"auth.operator_credential.disable": DisableOperatorCredential(d.Operators),
+		"auth.operator_credential.list":    ListOperatorCredentials(d.Operators),
+		"auth.verification.set":            SetVerification(d.Verification),
+		"auth.phone_salt.list":             ListPhoneSalts(d.PhoneSalts),
+	}
+}
+
+func Build(d Deps) ([]Route, error) {
+	s, err := mwanachamaauth.OperationSpec()
+	if err != nil {
+		return nil, err
+	}
+	bound := handlers(d)
+
+	var problems []string
+	var out []Route
+	for _, op := range dispatch.Handled(s) {
+		h, ok := bound[op.Action]
+		if !ok {
+			problems = append(problems, fmt.Sprintf("the action %q is declared but no handler is bound to it", op.Action))
+			continue
+		}
+		out = append(out, Route{Method: op.Method, Path: s.Base + op.Path, Action: op.Action, Handler: h})
+	}
+
+	declared := map[string]bool{}
+	for _, op := range dispatch.Handled(s) {
+		declared[op.Action] = true
+	}
+	for action := range bound {
+		if !declared[action] {
+			problems = append(problems, fmt.Sprintf("a handler is bound to %q, which the declaration does not name", action))
+		}
+	}
+	if len(problems) > 0 {
+		sort.Strings(problems)
+		return nil, fmt.Errorf("routes: %v", problems)
+	}
+	return out, nil
+}
+
+func Split(all []Route) (anonymous, gated []Route) {
+	open := map[string]bool{}
+	for _, a := range AnonymousActions {
+		open[a] = true
+	}
+	for _, r := range all {
+		if open[r.Action] {
+			anonymous = append(anonymous, r)
+			continue
+		}
+		gated = append(gated, r)
+	}
+	return anonymous, gated
+}
+
 func Routes(d Deps) []Route {
-	out := DeviceChallengeRoutes(d.Auth)
-	out = append(out, DeviceVerifyRoutes(d.Auth, d.Minter, d.TTL, d.AllowUnsignedDeviceProof)...)
-	out = append(out, RecoveryRoutes(d.Auth, d.Minter, d.TTL, d.EchoChallengeCode)...)
-	out = append(out, OperatorSignInRoutes(d.Operators, d.Minter, d.TTL)...)
-	out = append(out, OperatorCredentialRoutes(d.Operators, d.Identity)...)
-	out = append(out, VerificationRoutes(d.Verification)...)
-	out = append(out, PhoneSaltRoutes(d.PhoneSalts)...)
+	out, err := Build(d)
+	if err != nil {
+		panic(err)
+	}
 	return out
 }
