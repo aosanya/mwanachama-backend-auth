@@ -54,7 +54,10 @@ func Provision(db *gorm.DB, s *spec.Spec) error {
 	if err := spec.Migrate(db, s); err != nil {
 		return err
 	}
-	for _, stmt := range ProvisionStatements(s, db.Dialector.Name()) {
+	stored := func(o spec.Object, table, column string) string {
+		return spec.UnsetClause(db, o, table, column)
+	}
+	for _, stmt := range provisionStatements(s, db.Dialector.Name(), stored) {
 		if err := db.Exec(stmt).Error; err != nil {
 			return fmt.Errorf("auth: provision: %w", err)
 		}
@@ -62,9 +65,16 @@ func Provision(db *gorm.DB, s *spec.Spec) error {
 	return retireStaleSignOutReason(db, s)
 }
 
-// ProvisionStatements is what Provision applies beside spec.Migrate: the
-// three things the declaration has no way to carry.
 func ProvisionStatements(s *spec.Spec, dialect string) []string {
+	declared := func(o spec.Object, table, column string) string {
+		return spec.UnsetSQL(column, spec.DeclaresTextualColumn(o, column, dialect))
+	}
+	return provisionStatements(s, dialect, declared)
+}
+
+type unsetClause func(o spec.Object, table, column string) string
+
+func provisionStatements(s *spec.Spec, dialect string, unset unsetClause) []string {
 	var out []string
 	if dialect == "postgres" {
 		for _, seq := range seqNames {
@@ -73,10 +83,10 @@ func ProvisionStatements(s *spec.Spec, dialect string) []string {
 	}
 	if o, ok := s.ByRole(roleSalt); ok {
 		table := s.TableFor(o)
-		retired := columnName("RetiredAt")
+		live := unset(o, table, columnName("RetiredAt"))
 		out = append(out, fmt.Sprintf(
-			`CREATE UNIQUE INDEX IF NOT EXISTS %s_one_live ON %s ((%s IS NULL OR %s = '')) WHERE %s IS NULL OR %s = ''`,
-			table, table, retired, retired, retired, retired,
+			`CREATE UNIQUE INDEX IF NOT EXISTS %s_one_live ON %s (%s) WHERE %s`,
+			table, table, live, live,
 		))
 	}
 	return out

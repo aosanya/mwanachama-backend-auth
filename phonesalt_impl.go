@@ -96,7 +96,7 @@ func (s *PhoneSaltStore) Retire(ctx context.Context, id int, retiredBy string) (
 	}
 	res := s.st.Query(ctx, roleSalt).
 		Where(columnName("ID")+" = ?", id).
-		Where(unsetText(columnName("RetiredAt"))).
+		Where(s.st.Unset(roleSalt, "RetiredAt")).
 		Updates(map[string]any{
 			columnName("RetiredAt"): storedTime(time.Now().UTC()),
 			columnName("RetiredBy"): retiredBy,
@@ -123,7 +123,7 @@ func (s *PhoneSaltStore) Retire(ctx context.Context, id int, retiredBy string) (
 
 func (s *PhoneSaltStore) liveRecord(ctx context.Context) (saltRecord, error) {
 	var out saltRecord
-	q := s.st.Query(ctx, roleSalt).Where(unsetText(columnName("RetiredAt")))
+	q := s.st.Query(ctx, roleSalt).Where(s.st.Unset(roleSalt, "RetiredAt"))
 	if err := s.st.Take(q, roleSalt, &out, errNoRow); err != nil {
 		return saltRecord{}, err
 	}

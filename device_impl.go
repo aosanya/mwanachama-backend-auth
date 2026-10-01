@@ -89,7 +89,7 @@ func (s *AuthStore) SignOutOtherDevices(ctx context.Context, subjectID, keepID s
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		q := tx.Table(s.st.Table(roleDevice)).
 			Where(columnName("SubjectID")+" = ?", subjectID).
-			Where(liveDeviceClause())
+			Where(s.st.Unset(roleDevice, "SignedOutAt"))
 		if keepID != "" {
 			q = q.Where(columnName("ID")+" <> ?", keepID)
 		}

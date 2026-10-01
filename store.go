@@ -45,12 +45,6 @@ func listOf[T any](st *store, q *gorm.DB, role string) ([]T, error) {
 
 func storedTime(t time.Time) string { return t.UTC().Format(specstore.TimeLayout) }
 
-func unsetText(column string) string {
-	return "(" + column + " IS NULL OR " + column + " = '')"
-}
-
-func liveDeviceClause() string { return unsetText(columnName("SignedOutAt")) }
-
 type phoneBinding struct {
 	Phone     string
 	SubjectID string

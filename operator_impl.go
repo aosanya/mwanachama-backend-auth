@@ -124,7 +124,7 @@ func (s *OperatorStore) Disable(ctx context.Context, id string) error {
 	now := time.Now().UTC()
 	res := s.st.Query(ctx, roleCredential).
 		Where(columnName("ID")+" = ?", id).
-		Where(unsetText(columnName("DisabledAt"))).
+		Where(s.st.Unset(roleCredential, "DisabledAt")).
 		Updates(map[string]any{
 			columnName("DisabledAt"): storedTime(now),
 			columnName("UpdatedAt"):  storedTime(now),

@@ -72,8 +72,9 @@ nullable columns are `device.signed_out_at`, `credential.disabled_at` and
 zero instant reads as a real date and is not one.
 
 Everything else that used to be SQL `NULL` is now the zero value in a column
-that still accepts `NULL`, so a legacy row reads back the same. `unsetText`
-is the predicate for "absent", covering both.
+that still accepts `NULL`, so a legacy row reads back the same. The predicate
+for "absent" has to cover both, and it cannot be a constant: see
+[adopted column types](adopted-column-types.md).
 
 ## What `Provision` adds beside `spec.Migrate`
 
@@ -85,8 +86,11 @@ the generated block, so a spec can be reviewed as SQL before it is trusted.
    falls back to a uuid suffix; nothing asserts on the digits.
 2. **The one-live-salt index**, which is unique over an *expression*
    (`retired_at IS NULL`) rather than over a column. `spec.Index` takes
-   fields or a document path, so this cannot be declared. Only
-   `postgres_integration_test.go` exercises it.
+   fields or a document path, so this cannot be declared. Its *predicate* is
+   built from the column's real type, not from the declaration — see
+   [adopted column types](adopted-column-types.md). `postgres_integration_test.go`
+   exercises the constraint; `adopted_column_types_test.go` exercises the SQL
+   it is emitted as.
 3. **The one-off rewrite** of the sign-out reason `"member"` to `"self"`.
 
 Following `mwanachama-backend-git`, which applies its own full-text index the
@@ -101,7 +105,12 @@ set, through `spec.Legacy.Tables` — the shared helper that landed for this
 (S48 there), rather than a per-repo adoption path.
 
 Adoption renames the table, drops the legacy indexes, and renames
-`member_id` to `subject_id` and `failed_attempts` to `failed`. It refuses
+`member_id` to `subject_id` and `failed_attempts` to `failed`. "Legacy index"
+means one matched by `Legacy.IndexPrefixes`, which here is `auth_` among
+others — broad enough that it once matched `auth_challenge_pkey`, the index
+Postgres keeps for that table's primary-key constraint and refuses to drop on
+its own. `spec.DropIndexes` now skips any index a constraint owns (S50 there).
+It refuses
 by name if both the legacy and the declared table exist and the legacy one
 still holds rows, which is the case where converting would orphan data.
 

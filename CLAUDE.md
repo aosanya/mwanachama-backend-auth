@@ -147,8 +147,18 @@ the owner** — DEV-1705.
 columns whose absence differs from their zero: `device.signed_out_at`,
 `credential.disabled_at`, `salt.retired_at`. `specstore` refuses any other
 pairing. Everything else that was SQL `NULL` is now the zero value in a
-column that still accepts `NULL`, so a legacy row reads back the same;
-`unsetText` is the predicate covering both.
+column that still accepts `NULL`, so a legacy row reads back the same.
+
+**The "absent" predicate asks the database for the column's type** —
+`st.Unset(role, field)`, never a hand-written `IS NULL OR = ''`. An adopted
+table keeps the types its old hand-written SQL gave it, so on
+`mwanachama-wakala-api`'s database the three nullable instants are real
+`timestamptz` columns while the blueprint says `text`, and Postgres refuses to
+compare one to `''` at all. See
+[2. design/adopted-column-types.md](documentation/2.%20design/adopted-column-types.md).
+Four sites were broken against the live database before this was found, three
+of them ordinary reads, because SQLite compares across types without
+complaint and every test here runs on a table `spec.Migrate` created.
 
 **A table is `<instance>_hashOf(<mount>)_hashOf(<module>_<object>)`** — only
 the instance stays readable. Assert on `spec.RawNameFor`, never on a physical
@@ -299,9 +309,10 @@ so a mount can log it around whatever wraps this route.
   `mwanachama-wakala-api` is written against them, and the declared statuses
   in `auth.operations.json` depend on their sentinels staying stable. The four
   **constructors** did change: each takes a `*spec.Spec` and returns an error.
-- Four-phase `documentation/`, and the two pages a change here usually
+- Four-phase `documentation/`, and the three pages a change here usually
   touches are
-  [2. design/declared-storage.md](documentation/2.%20design/declared-storage.md)
+  [2. design/declared-storage.md](documentation/2.%20design/declared-storage.md),
+  [2. design/adopted-column-types.md](documentation/2.%20design/adopted-column-types.md)
   and [2. design/routes.md](documentation/2.%20design/routes.md).
 
 ## Code comments
