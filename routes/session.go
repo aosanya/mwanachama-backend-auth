@@ -31,5 +31,5 @@ type Session struct {
 // needs to know that minting one takes a member id, an optional device id
 // and a lifetime, and produces a Session.
 type SessionMinter interface {
-	Mint(ctx context.Context, memberID, deviceID string, ttl time.Duration) (Session, error)
+	Mint(ctx context.Context, subjectID, deviceID string, ttl time.Duration) (Session, error)
 }

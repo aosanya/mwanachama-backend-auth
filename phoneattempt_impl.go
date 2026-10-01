@@ -1,103 +1,104 @@
 package mwanachamaauth
 
-// AuthStore's phone-attempt and phone-to-member methods — see
-// device_impl.go's header for why this domain is split across three files.
-
 import (
 	"context"
+	"errors"
 	"time"
 
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/aosanya/mwanachama-backend-auth/gormstore"
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
-// PhoneAttempt reads a number's consecutive-wrong-code state (DEV-1264). A
-// number nobody has failed against returns the zero PhoneAttempt.
 func (s *AuthStore) PhoneAttempt(ctx context.Context, phone string) (models.PhoneAttempt, error) {
-	var row gormstore.PhoneAttemptRow
-	err := s.db.WithContext(ctx).Table(s.tables.AuthPhoneAttempts).Where("phone = ?", phone).First(&row).Error
-	if err == gorm.ErrRecordNotFound {
+	var out models.PhoneAttempt
+	q := s.st.Query(ctx, rolePhoneAttempt).Where(columnName("Phone")+" = ?", phone)
+	err := s.st.Take(q, rolePhoneAttempt, &out, errNoRow)
+	if errors.Is(err, errNoRow) {
 		return models.PhoneAttempt{Phone: phone}, nil
 	}
 	if err != nil {
 		return models.PhoneAttempt{}, classify(err)
 	}
-	return gormstore.PhoneAttemptFromRow(row), nil
+	return out, nil
 }
 
-// RecordPhoneFailure counts one wrong code against a number.
-//
-// The read-modify-write is deliberate rather than an atomic increment: the
-// policy (when a lock starts, and that an expired lock resets the count
-// first) lives in models.PhoneAttempt.Fail so this store cannot drift from
-// what the domain type itself defines.
 func (s *AuthStore) RecordPhoneFailure(ctx context.Context, phone string, now time.Time, lockFor time.Duration) (models.PhoneAttempt, error) {
 	current, err := s.PhoneAttempt(ctx, phone)
 	if err != nil {
 		return models.PhoneAttempt{}, err
 	}
 	next := current.Fail(now, lockFor)
-	row := gormstore.PhoneAttemptToRow(next, now)
-	err = s.db.WithContext(ctx).Table(s.tables.AuthPhoneAttempts).
+	next.Phone = phone
+	next.UpdatedAt = now
+
+	row, err := encode(s.st.Object(rolePhoneAttempt), next)
+	if err != nil {
+		return models.PhoneAttempt{}, err
+	}
+	err = s.st.Query(ctx, rolePhoneAttempt).
 		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "phone"}},
-			DoUpdates: clause.AssignmentColumns([]string{"failed_attempts", "locked_until", "updated_at"}),
-		}).Create(&row).Error
+			Columns: []clause.Column{{Name: columnName("Phone")}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				columnName("Failed"), columnName("LockedUntil"), columnName("UpdatedAt"),
+			}),
+		}).Create(row).Error
 	if err != nil {
 		return models.PhoneAttempt{}, classify(err)
 	}
 	return next, nil
 }
 
-// ClearPhoneAttempts forgets a number's failures, which a correct code does.
 func (s *AuthStore) ClearPhoneAttempts(ctx context.Context, phone string) error {
-	err := s.db.WithContext(ctx).Table(s.tables.AuthPhoneAttempts).Where("phone = ?", phone).
-		Delete(&gormstore.PhoneAttemptRow{}).Error
+	err := s.st.Query(ctx, rolePhoneAttempt).
+		Where(columnName("Phone")+" = ?", phone).
+		Delete(nil).Error
 	if err != nil {
 		return classify(err)
 	}
 	return nil
 }
 
-// MemberIDForPhone returns the member bound to a phone, minting via
-// mintMember the first time. The insert is guarded with an ON CONFLICT DO
-// NOTHING so a race resolves cleanly — the losing caller reads the winning
-// caller's id back, mirroring the gateway's original Postgres store.
-func (s *AuthStore) MemberIDForPhone(ctx context.Context, phone string, mintMember func() string) (string, error) {
-	var existing gormstore.AuthPhoneRow
-	err := s.db.WithContext(ctx).Table(s.tables.AuthPhones).Where("phone = ?", phone).First(&existing).Error
+func (s *AuthStore) SubjectIDForPhone(ctx context.Context, phone string, mintSubject func() string) (string, error) {
+	held, err := s.phoneBinding(ctx, phone)
 	if err == nil {
-		return existing.MemberID, nil
+		return held.SubjectID, nil
 	}
-	if err != gorm.ErrRecordNotFound {
+	if !errors.Is(err, errNoRow) {
 		return "", classify(err)
 	}
 
-	minted := mintMember()
-	// DEV-1263 · "" means the caller asked without minting (the challenge
-	// door). Write nothing: a row carrying an empty string would read as
-	// bound on every later call while pointing at no member at all.
+	minted := mintSubject()
 	if minted == "" {
 		return "", nil
 	}
 
-	row := gormstore.AuthPhoneRow{Phone: phone, MemberID: minted}
-	err = s.db.WithContext(ctx).Table(s.tables.AuthPhones).
+	row, err := encode(s.st.Object(rolePhoneBinding), phoneBinding{Phone: phone, SubjectID: minted})
+	if err != nil {
+		return "", err
+	}
+	err = s.st.Query(ctx, rolePhoneBinding).
 		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "phone"}},
+			Columns:   []clause.Column{{Name: columnName("Phone")}},
 			DoNothing: true,
-		}).Create(&row).Error
+		}).Create(row).Error
 	if err != nil {
 		return "", classify(err)
 	}
-	var out gormstore.AuthPhoneRow
-	if err := s.db.WithContext(ctx).Table(s.tables.AuthPhones).Where("phone = ?", phone).First(&out).Error; err != nil {
+	out, err := s.phoneBinding(ctx, phone)
+	if err != nil {
 		return "", classify(err)
 	}
-	return out.MemberID, nil
+	return out.SubjectID, nil
+}
+
+func (s *AuthStore) phoneBinding(ctx context.Context, phone string) (phoneBinding, error) {
+	var out phoneBinding
+	q := s.st.Query(ctx, rolePhoneBinding).Where(columnName("Phone")+" = ?", phone)
+	if err := s.st.Take(q, rolePhoneBinding, &out, errNoRow); err != nil {
+		return phoneBinding{}, err
+	}
+	return out, nil
 }
 
 var _ models.AuthRepository = (*AuthStore)(nil)

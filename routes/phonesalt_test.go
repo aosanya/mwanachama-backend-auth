@@ -7,13 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/routes"
 )
 
 func TestListPhoneSaltsEmptyBeforeProvisioning(t *testing.T) {
 	db, tables := newTestDB(t)
-	salts := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	salts := mustPhoneSaltStore(t, db, tables)
 
 	handler := routes.ListPhoneSalts(salts)
 	req := httptest.NewRequest(http.MethodGet, "/phone-salts", nil)
@@ -33,7 +32,7 @@ func TestListPhoneSaltsEmptyBeforeProvisioning(t *testing.T) {
 
 func TestListPhoneSaltsNeverCarriesASecretField(t *testing.T) {
 	db, tables := newTestDB(t)
-	salts := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	salts := mustPhoneSaltStore(t, db, tables)
 	if _, err := salts.Provision(context.Background(), 1, []byte("org-key"), "member-1"); err != nil {
 		t.Fatalf("Provision: %v", err)
 	}

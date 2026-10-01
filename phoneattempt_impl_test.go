@@ -5,13 +5,12 @@ import (
 	"testing"
 	"time"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
-func TestAuthMemberIDForPhoneMintsOnce(t *testing.T) {
+func TestAuthSubjectIDForPhoneMintsOnce(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	mints := 0
@@ -19,21 +18,21 @@ func TestAuthMemberIDForPhoneMintsOnce(t *testing.T) {
 		mints++
 		return "member-x"
 	}
-	id, err := s.MemberIDForPhone(ctx, "+254700000001", mint)
+	id, err := s.SubjectIDForPhone(ctx, "+254700000001", mint)
 	if err != nil {
 		t.Fatalf("first: %v", err)
 	}
 	if id != "member-x" || mints != 1 {
 		t.Fatalf("expected minted once, got id=%q mints=%d", id, mints)
 	}
-	id2, err := s.MemberIDForPhone(ctx, "+254700000001", mint)
+	id2, err := s.SubjectIDForPhone(ctx, "+254700000001", mint)
 	if err != nil {
 		t.Fatalf("second: %v", err)
 	}
 	if id2 != "member-x" || mints != 1 {
 		t.Fatalf("expected reuse, got id=%q mints=%d", id2, mints)
 	}
-	if _, err := s.MemberIDForPhone(ctx, "+254700000002", mint); err != nil {
+	if _, err := s.SubjectIDForPhone(ctx, "+254700000002", mint); err != nil {
 		t.Fatalf("third: %v", err)
 	}
 	if mints != 2 {
@@ -41,14 +40,14 @@ func TestAuthMemberIDForPhoneMintsOnce(t *testing.T) {
 	}
 }
 
-// TestAuthMemberIDForPhoneEmptyMintDoesNotBind is DEV-1263: a mintMember
+// TestAuthSubjectIDForPhoneEmptyMintDoesNotBind is DEV-1263: a mintSubject
 // returning "" means "do not bind", not "bind the empty string".
-func TestAuthMemberIDForPhoneEmptyMintDoesNotBind(t *testing.T) {
+func TestAuthSubjectIDForPhoneEmptyMintDoesNotBind(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
-	id, err := s.MemberIDForPhone(ctx, "+254700000003", func() string { return "" })
+	id, err := s.SubjectIDForPhone(ctx, "+254700000003", func() string { return "" })
 	if err != nil {
 		t.Fatalf("first: %v", err)
 	}
@@ -56,7 +55,7 @@ func TestAuthMemberIDForPhoneEmptyMintDoesNotBind(t *testing.T) {
 		t.Fatalf("expected no binding, got %q", id)
 	}
 	// A later call that DOES mint must still succeed for the same number.
-	id2, err := s.MemberIDForPhone(ctx, "+254700000003", func() string { return "member-y" })
+	id2, err := s.SubjectIDForPhone(ctx, "+254700000003", func() string { return "member-y" })
 	if err != nil {
 		t.Fatalf("second: %v", err)
 	}
@@ -67,7 +66,7 @@ func TestAuthMemberIDForPhoneEmptyMintDoesNotBind(t *testing.T) {
 
 func TestAuthPhoneAttemptLifecycle(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	zero, err := s.PhoneAttempt(ctx, "+254700000009")

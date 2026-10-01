@@ -30,7 +30,7 @@
 //     addresses that hold no credential, and the distinct (here: dropped —
 //     see OperatorSignIn's own doc comment) log-only signInFailure.
 //   - ChangeOperatorPassword (operator.go) — pure operator plus the Identity
-//     seam (`cred.MemberID != identity.CallerID(r)`).
+//     seam (`cred.SubjectID != identity.CallerID(r)`).
 //   - DisableOperatorCredential, ListOperatorCredentials (operator.go) — pure
 //     operator, no seam needed beyond path values.
 //   - SetVerification (verification.go) — pure verification, a

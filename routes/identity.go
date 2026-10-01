@@ -6,7 +6,7 @@ import "net/http"
 // request — the one gateway-session concern this package cannot own itself.
 // Modeled on mwanachama-backend-comm/routes/identity.go's Identity, narrowed
 // to the one fact this package's own portable routes need: changeOperatorPassword
-// checks `cred.MemberID != identity.CallerID(r)` before letting a caller
+// checks `cred.SubjectID != identity.CallerID(r)` before letting a caller
 // change a console credential, the same way comm's DM handlers check the
 // caller's own id rather than reading it off a URL path segment. Unlike
 // comm's Identity, no route in this package needs the caller's device id, so

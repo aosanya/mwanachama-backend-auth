@@ -23,7 +23,7 @@ func TestVerificationStatusValues(t *testing.T) {
 // Note is optional — a plain status change with no note attached (the
 // common case) must not send an empty "note" key.
 func TestVerificationRecordNoteOmittedWhenEmpty(t *testing.T) {
-	r := VerificationRecord{MemberID: "m1", Status: VerificationStatusVerified, UpdatedAt: time.Unix(0, 0).UTC()}
+	r := VerificationRecord{SubjectID: "m1", Status: VerificationStatusVerified, UpdatedAt: time.Unix(0, 0).UTC()}
 	b, err := json.Marshal(r)
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
@@ -55,7 +55,7 @@ func TestVerificationRecordStatusRoundTrips(t *testing.T) {
 		VerificationStatusUnverified, VerificationStatusPending,
 		VerificationStatusVerified, VerificationStatusRejected,
 	} {
-		r := VerificationRecord{MemberID: "m1", Status: status}
+		r := VerificationRecord{SubjectID: "m1", Status: status}
 		b, err := json.Marshal(r)
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)

@@ -16,7 +16,7 @@ import (
 
 func TestDeviceChallengeAndVerifyHappyPath(t *testing.T) {
 	db, tables := newTestDB(t)
-	auth := mwanachamaauth.NewAuthStore(db, tables)
+	auth := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	pub, priv, err := ed25519.GenerateKey(nil)
@@ -24,7 +24,7 @@ func TestDeviceChallengeAndVerifyHappyPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	dev, err := auth.RegisterDevice(ctx, mwanachamaauth.Device{
-		MemberID: "m1", PublicKey: base64.StdEncoding.EncodeToString(pub),
+		SubjectID: "m1", PublicKey: base64.StdEncoding.EncodeToString(pub),
 	})
 	if err != nil {
 		t.Fatalf("RegisterDevice: %v", err)
@@ -40,7 +40,7 @@ func TestDeviceChallengeAndVerifyHappyPath(t *testing.T) {
 	}
 	var challenge mwanachamaauth.Challenge
 	decodeBody(t, rec, &challenge)
-	if challenge.MemberID != "" {
+	if challenge.SubjectID != "" {
 		t.Fatalf("challenge response leaked member_id: %+v", challenge)
 	}
 	if challenge.Secret == "" {
@@ -74,7 +74,7 @@ func TestDeviceChallengeAndVerifyHappyPath(t *testing.T) {
 // a session.
 func TestDeviceVerifyRefusesWrongSignature(t *testing.T) {
 	db, tables := newTestDB(t)
-	auth := mwanachamaauth.NewAuthStore(db, tables)
+	auth := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	pub, _, err := ed25519.GenerateKey(nil)
@@ -82,13 +82,13 @@ func TestDeviceVerifyRefusesWrongSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 	dev, err := auth.RegisterDevice(ctx, mwanachamaauth.Device{
-		MemberID: "m1", PublicKey: base64.StdEncoding.EncodeToString(pub),
+		SubjectID: "m1", PublicKey: base64.StdEncoding.EncodeToString(pub),
 	})
 	if err != nil {
 		t.Fatalf("RegisterDevice: %v", err)
 	}
 	challenge, err := auth.CreateChallenge(ctx, mwanachamaauth.Challenge{
-		Kind: mwanachamaauth.KindDevice, DeviceID: dev.ID, MemberID: dev.MemberID, Secret: "nonce",
+		Kind: mwanachamaauth.KindDevice, DeviceID: dev.ID, SubjectID: dev.SubjectID, Secret: "nonce",
 	})
 	if err != nil {
 		t.Fatalf("CreateChallenge: %v", err)

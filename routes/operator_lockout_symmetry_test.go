@@ -48,14 +48,14 @@ func postSignIn(t *testing.T, client *http.Client, url, email, password string) 
 // identical at every step — including the 429 lock-out itself.
 func TestOperatorSignIn_NoCredentialAddressIsIndistinguishableFromWrongPassword(t *testing.T) {
 	db, tables := newTestDB(t)
-	ops := mwanachamaauth.NewOperatorStore(db, tables)
+	ops := mustOperatorStore(t, db, tables)
 	ctx := context.Background()
 
 	hash, err := mwanachamaauth.Hash("correct horse battery staple 12")
 	if err != nil {
 		t.Fatalf("Hash: %v", err)
 	}
-	if _, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{MemberID: "m1", Email: "real@example.org"}, hash); err != nil {
+	if _, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{SubjectID: "m1", Email: "real@example.org"}, hash); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 

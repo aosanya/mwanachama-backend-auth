@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/routes"
 )
 
@@ -15,10 +14,10 @@ import (
 func TestRoutesAggregatorReturnsEveryGroup(t *testing.T) {
 	db, tables := newTestDB(t)
 	deps := routes.Deps{
-		Auth:         mwanachamaauth.NewAuthStore(db, tables),
-		Operators:    mwanachamaauth.NewOperatorStore(db, tables),
-		Verification: mwanachamaauth.NewVerificationStore(db, tables),
-		PhoneSalts:   mwanachamaauth.NewPhoneSaltStore(db, tables),
+		Auth:         mustAuthStore(t, db, tables),
+		Operators:    mustOperatorStore(t, db, tables),
+		Verification: mustVerificationStore(t, db, tables),
+		PhoneSalts:   mustPhoneSaltStore(t, db, tables),
 		Minter:       &fakeMinter{},
 		TTL:          time.Hour,
 		Identity:     fakeIdentity("m1"),

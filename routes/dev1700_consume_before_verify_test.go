@@ -31,7 +31,7 @@ import (
 
 func TestDEV1700_DeviceVerify_OneWrongSignatureBurnsTheChallengeForTheRealDevice(t *testing.T) {
 	db, tables := newTestDB(t)
-	auth := mwanachamaauth.NewAuthStore(db, tables)
+	auth := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	pub, priv, err := ed25519.GenerateKey(nil)
@@ -39,13 +39,13 @@ func TestDEV1700_DeviceVerify_OneWrongSignatureBurnsTheChallengeForTheRealDevice
 		t.Fatal(err)
 	}
 	dev, err := auth.RegisterDevice(ctx, mwanachamaauth.Device{
-		MemberID: "m1", PublicKey: base64.StdEncoding.EncodeToString(pub),
+		SubjectID: "m1", PublicKey: base64.StdEncoding.EncodeToString(pub),
 	})
 	if err != nil {
 		t.Fatalf("RegisterDevice: %v", err)
 	}
 	challenge, err := auth.CreateChallenge(ctx, mwanachamaauth.Challenge{
-		Kind: mwanachamaauth.KindDevice, DeviceID: dev.ID, MemberID: dev.MemberID, Secret: "nonce-xyz",
+		Kind: mwanachamaauth.KindDevice, DeviceID: dev.ID, SubjectID: dev.SubjectID, Secret: "nonce-xyz",
 	})
 	if err != nil {
 		t.Fatalf("CreateChallenge: %v", err)
@@ -88,11 +88,11 @@ func TestDEV1700_DeviceVerify_OneWrongSignatureBurnsTheChallengeForTheRealDevice
 
 func TestDEV1700_RecoveryVerify_OneWrongGuessBurnsTheChallengeForTheRealMember(t *testing.T) {
 	db, tables := newTestDB(t)
-	auth := mwanachamaauth.NewAuthStore(db, tables)
+	auth := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	challenge, err := auth.CreateChallenge(ctx, mwanachamaauth.Challenge{
-		Kind: mwanachamaauth.KindRecovery, MemberID: "m1", Secret: "correct-secret",
+		Kind: mwanachamaauth.KindRecovery, SubjectID: "m1", Secret: "correct-secret",
 	})
 	if err != nil {
 		t.Fatalf("CreateChallenge: %v", err)

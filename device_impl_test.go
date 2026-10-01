@@ -6,16 +6,15 @@ import (
 	"testing"
 	"time"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
 func TestAuthRegisterAndGetDevice(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
-	d, err := s.RegisterDevice(ctx, models.Device{MemberID: "m-1", PublicKey: "pk"})
+	d, err := s.RegisterDevice(ctx, models.Device{SubjectID: "m-1", PublicKey: "pk"})
 	if err != nil {
 		t.Fatalf("register: %v", err)
 	}
@@ -26,7 +25,7 @@ func TestAuthRegisterAndGetDevice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	if got.MemberID != "m-1" || got.PublicKey != "pk" {
+	if got.SubjectID != "m-1" || got.PublicKey != "pk" {
 		t.Fatalf("wrong device: %+v", got)
 	}
 	if _, err := s.GetDevice(ctx, "missing"); !errors.Is(err, models.ErrAuthNotFound) {
@@ -40,10 +39,10 @@ func TestAuthRegisterAndGetDevice(t *testing.T) {
 // tap, a client resend — must not move it forward. DEV-1272.
 func TestSignOutKeepsTheFirstDate(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
-	dev, err := s.RegisterDevice(ctx, models.Device{MemberID: "m1", PublicKey: "pk", Name: "phone"})
+	dev, err := s.RegisterDevice(ctx, models.Device{SubjectID: "m1", PublicKey: "pk", Name: "phone"})
 	if err != nil {
 		t.Fatalf("register: %v", err)
 	}
@@ -52,7 +51,7 @@ func TestSignOutKeepsTheFirstDate(t *testing.T) {
 	}
 
 	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	first, err := s.SignOutDevice(ctx, dev.ID, t0.Add(time.Hour), models.SignOutByMember)
+	first, err := s.SignOutDevice(ctx, dev.ID, t0.Add(time.Hour), models.SignOutBySelf)
 	if err != nil {
 		t.Fatalf("sign out: %v", err)
 	}
@@ -70,11 +69,11 @@ func TestSignOutKeepsTheFirstDate(t *testing.T) {
 			again.SignedOutAt, t0.Add(time.Hour))
 	}
 	// DEV-1347 · and it must not rewrite WHY either.
-	if again.SignedOutBy != models.SignOutByMember {
-		t.Errorf("a repeat sign-out rewrote the reason to %q, want %q", again.SignedOutBy, models.SignOutByMember)
+	if again.SignedOutBy != models.SignOutBySelf {
+		t.Errorf("a repeat sign-out rewrote the reason to %q, want %q", again.SignedOutBy, models.SignOutBySelf)
 	}
 
-	if _, err := s.SignOutDevice(ctx, "device-nope", t0, models.SignOutByMember); !errors.Is(err, models.ErrAuthNotFound) {
+	if _, err := s.SignOutDevice(ctx, "device-nope", t0, models.SignOutBySelf); !errors.Is(err, models.ErrAuthNotFound) {
 		t.Errorf("signing out an unknown device returned %v, want models.ErrAuthNotFound", err)
 	}
 
@@ -88,17 +87,17 @@ func TestSignOutKeepsTheFirstDate(t *testing.T) {
 // stamping `recovery`, and returns exactly what it ended.
 func TestSignOutOtherDevicesEjectsEveryoneButTheKept(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
-	a, _ := s.RegisterDevice(ctx, models.Device{MemberID: "m1", PublicKey: "pk-a"})
-	b, _ := s.RegisterDevice(ctx, models.Device{MemberID: "m1", PublicKey: "pk-b"})
-	c, _ := s.RegisterDevice(ctx, models.Device{MemberID: "m1", PublicKey: "pk-c"})
+	a, _ := s.RegisterDevice(ctx, models.Device{SubjectID: "m1", PublicKey: "pk-a"})
+	b, _ := s.RegisterDevice(ctx, models.Device{SubjectID: "m1", PublicKey: "pk-b"})
+	c, _ := s.RegisterDevice(ctx, models.Device{SubjectID: "m1", PublicKey: "pk-c"})
 	// A different member's device must never be touched by m1's sweep.
-	other, _ := s.RegisterDevice(ctx, models.Device{MemberID: "m2", PublicKey: "pk-other"})
+	other, _ := s.RegisterDevice(ctx, models.Device{SubjectID: "m2", PublicKey: "pk-other"})
 	// Already signed out — must not be re-reported.
-	alreadyOut, _ := s.RegisterDevice(ctx, models.Device{MemberID: "m1", PublicKey: "pk-out"})
-	if _, err := s.SignOutDevice(ctx, alreadyOut.ID, time.Now(), models.SignOutByMember); err != nil {
+	alreadyOut, _ := s.RegisterDevice(ctx, models.Device{SubjectID: "m1", PublicKey: "pk-out"})
+	if _, err := s.SignOutDevice(ctx, alreadyOut.ID, time.Now(), models.SignOutBySelf); err != nil {
 		t.Fatalf("pre-signout: %v", err)
 	}
 

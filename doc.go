@@ -98,9 +98,9 @@ const (
 	KindPhone    = models.KindPhone
 	KindRecovery = models.KindRecovery
 
-	// SignOutByMember and SignOutByRecovery are the Device.SignedOutBy
+	// SignOutBySelf and SignOutByRecovery are the Device.SignedOutBy
 	// values, forwarded from models. of the same name.
-	SignOutByMember   = models.SignOutByMember
+	SignOutBySelf     = models.SignOutBySelf
 	SignOutByRecovery = models.SignOutByRecovery
 
 	// VerificationStatusPending, VerificationStatusVerified and

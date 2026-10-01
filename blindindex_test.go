@@ -20,7 +20,7 @@ func (f fakeRegionSource) DefaultDiallingRegion(context.Context) (string, error)
 
 func TestIndexerCanonicalizesThenHashes(t *testing.T) {
 	db, tables := newTestDB(t)
-	salts := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	salts := mustPhoneSaltStore(t, db, tables)
 	ctx := context.Background()
 	if _, err := salts.Provision(ctx, 1, []byte("org-key"), ""); err != nil {
 		t.Fatalf("Provision: %v", err)
@@ -51,7 +51,7 @@ func TestIndexerCanonicalizesThenHashes(t *testing.T) {
 
 func TestIndexerRefusesWithNoRegion(t *testing.T) {
 	db, tables := newTestDB(t)
-	salts := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	salts := mustPhoneSaltStore(t, db, tables)
 	ix := mwanachamaauth.NewIndexer(salts, fakeRegionSource{region: ""})
 
 	if _, err := ix.Index(context.Background(), "0712 445 678"); !errors.Is(err, mwanachamaauth.ErrNoDiallingRegion) {
@@ -64,7 +64,7 @@ func TestIndexerRefusesWithNoRegion(t *testing.T) {
 
 func TestIndexerRejectsUnparseableNumbers(t *testing.T) {
 	db, tables := newTestDB(t)
-	salts := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	salts := mustPhoneSaltStore(t, db, tables)
 	ctx := context.Background()
 	if _, err := salts.Provision(ctx, 1, []byte("org-key"), ""); err != nil {
 		t.Fatalf("Provision: %v", err)

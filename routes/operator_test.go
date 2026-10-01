@@ -14,14 +14,14 @@ import (
 
 func TestOperatorSignInHappyPath(t *testing.T) {
 	db, tables := newTestDB(t)
-	ops := mwanachamaauth.NewOperatorStore(db, tables)
+	ops := mustOperatorStore(t, db, tables)
 	ctx := context.Background()
 
 	hash, err := mwanachamaauth.Hash("correct horse battery staple")
 	if err != nil {
 		t.Fatalf("Hash: %v", err)
 	}
-	if _, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{MemberID: "m1", Email: "op@example.org"}, hash); err != nil {
+	if _, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{SubjectID: "m1", Email: "op@example.org"}, hash); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -45,7 +45,7 @@ func TestOperatorSignInHappyPath(t *testing.T) {
 // enumeration-resistant refusal shape: locked out with 429, one sentence.
 func TestOperatorSignInLocksOutAfterFiveFailures(t *testing.T) {
 	db, tables := newTestDB(t)
-	ops := mwanachamaauth.NewOperatorStore(db, tables)
+	ops := mustOperatorStore(t, db, tables)
 	minter := &fakeMinter{}
 	handler := routes.OperatorSignIn(ops, minter, time.Hour)
 
@@ -76,10 +76,10 @@ func TestOperatorSignInLocksOutAfterFiveFailures(t *testing.T) {
 
 func TestChangeOperatorPasswordForbidsAnotherCallersCredential(t *testing.T) {
 	db, tables := newTestDB(t)
-	ops := mwanachamaauth.NewOperatorStore(db, tables)
+	ops := mustOperatorStore(t, db, tables)
 	ctx := context.Background()
 	hash, _ := mwanachamaauth.Hash("correct horse battery staple")
-	if _, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{MemberID: "m1", Email: "owner@example.org"}, hash); err != nil {
+	if _, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{SubjectID: "m1", Email: "owner@example.org"}, hash); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -105,10 +105,10 @@ func TestChangeOperatorPasswordForbidsAnotherCallersCredential(t *testing.T) {
 
 func TestDisableAndListOperatorCredentials(t *testing.T) {
 	db, tables := newTestDB(t)
-	ops := mwanachamaauth.NewOperatorStore(db, tables)
+	ops := mustOperatorStore(t, db, tables)
 	ctx := context.Background()
 	hash, _ := mwanachamaauth.Hash("correct horse battery staple")
-	cred, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{MemberID: "m1", Email: "d@example.org"}, hash)
+	cred, err := ops.Create(ctx, mwanachamaauth.OperatorCredential{SubjectID: "m1", Email: "d@example.org"}, hash)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestDisableAndListOperatorCredentials(t *testing.T) {
 
 	list := routes.ListOperatorCredentials(ops)
 	req = httptest.NewRequest(http.MethodGet, "/members/m1/operator-credentials", nil)
-	req.SetPathValue("memberID", "m1")
+	req.SetPathValue("subjectID", "m1")
 	rec = httptest.NewRecorder()
 	list(rec, req)
 	if rec.Code != http.StatusOK {

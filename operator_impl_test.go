@@ -6,16 +6,15 @@ import (
 	"testing"
 	"time"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
 func TestOperatorCreateAndVerifier(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewOperatorStore(db, tables)
+	s := mustOperatorStore(t, db, tables)
 	ctx := context.Background()
 
-	c, err := s.Create(ctx, models.OperatorCredential{MemberID: "m1", Email: "a@example.org"}, "hash-1")
+	c, err := s.Create(ctx, models.OperatorCredential{SubjectID: "m1", Email: "a@example.org"}, "hash-1")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -32,7 +31,7 @@ func TestOperatorCreateAndVerifier(t *testing.T) {
 	}
 
 	// A second credential claiming the same address is refused.
-	if _, err := s.Create(ctx, models.OperatorCredential{MemberID: "m2", Email: "a@example.org"}, "hash-2"); !errors.Is(err, models.ErrOperatorEmailTaken) {
+	if _, err := s.Create(ctx, models.OperatorCredential{SubjectID: "m2", Email: "a@example.org"}, "hash-2"); !errors.Is(err, models.ErrOperatorEmailTaken) {
 		t.Fatalf("duplicate email = %v, want ErrOperatorEmailTaken", err)
 	}
 
@@ -43,10 +42,10 @@ func TestOperatorCreateAndVerifier(t *testing.T) {
 
 func TestOperatorDisableIsIdempotentAndKeepsFirstStamp(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewOperatorStore(db, tables)
+	s := mustOperatorStore(t, db, tables)
 	ctx := context.Background()
 
-	c, err := s.Create(ctx, models.OperatorCredential{MemberID: "m1", Email: "b@example.org"}, "hash-1")
+	c, err := s.Create(ctx, models.OperatorCredential{SubjectID: "m1", Email: "b@example.org"}, "hash-1")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -72,18 +71,18 @@ func TestOperatorDisableIsIdempotentAndKeepsFirstStamp(t *testing.T) {
 
 func TestOperatorListForMemberIncludesDisabled(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewOperatorStore(db, tables)
+	s := mustOperatorStore(t, db, tables)
 	ctx := context.Background()
 
-	a, _ := s.Create(ctx, models.OperatorCredential{MemberID: "m1", Email: "c1@example.org"}, "h1")
-	b, _ := s.Create(ctx, models.OperatorCredential{MemberID: "m1", Email: "c2@example.org"}, "h2")
+	a, _ := s.Create(ctx, models.OperatorCredential{SubjectID: "m1", Email: "c1@example.org"}, "h1")
+	b, _ := s.Create(ctx, models.OperatorCredential{SubjectID: "m1", Email: "c2@example.org"}, "h2")
 	if err := s.Disable(ctx, b.ID); err != nil {
 		t.Fatalf("Disable: %v", err)
 	}
 
-	out, err := s.ListForMember(ctx, "m1")
+	out, err := s.ListForSubject(ctx, "m1")
 	if err != nil {
-		t.Fatalf("ListForMember: %v", err)
+		t.Fatalf("ListForSubject: %v", err)
 	}
 	if len(out) != 2 {
 		t.Fatalf("expected both credentials (disabled included), got %d: %+v", len(out), out)
@@ -99,7 +98,7 @@ func TestOperatorListForMemberIncludesDisabled(t *testing.T) {
 
 func TestOperatorLockOutAfterFiveFailures(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewOperatorStore(db, tables)
+	s := mustOperatorStore(t, db, tables)
 	ctx := context.Background()
 
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)

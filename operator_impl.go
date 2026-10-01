@@ -1,106 +1,113 @@
 package mwanachamaauth
 
-// OperatorStore, ported from mwanachama-backend-api-gateway's
-// internal/store/{memory,postgres} operator_store.go. Lock-out methods
-// (Attempt/RecordFailure/ClearAttempts) live in operator_attempt_impl.go —
-// the same split device/challenge/phone-attempt take in auth's own three
-// files, for the same [[file-length-limit]] reason.
-
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
 	"gorm.io/gorm"
 
-	"github.com/aosanya/mwanachama-backend-auth/gormstore"
+	"github.com/aosanya/mwanachama-backend-shared/spec"
+
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
-// OperatorStore is the GORM-backed implementation of
-// [models.OperatorRepository].
 type OperatorStore struct {
-	db     *gorm.DB
-	tables TableNames
+	st *store
+	db *gorm.DB
 }
 
-// NewOperatorStore constructs a store over db, scoped to the tables named by
-// t.
-func NewOperatorStore(db *gorm.DB, t TableNames) *OperatorStore {
-	return &OperatorStore{db: db, tables: t}
-}
-
-// Create stores a credential and its verifier.
-func (s *OperatorStore) Create(ctx context.Context, c models.OperatorCredential, hash string) (models.OperatorCredential, error) {
-	row := gormstore.CredentialToRow(c, hash)
-	err := s.db.WithContext(ctx).Table(s.tables.OperatorCredentials).Create(&row).Error
+func NewOperatorStore(db *gorm.DB, s *spec.Spec) (*OperatorStore, error) {
+	st, err := newStore(db, s, carriers())
 	if err != nil {
+		return nil, err
+	}
+	return &OperatorStore{st: st, db: db}, nil
+}
+
+func (s *OperatorStore) Create(ctx context.Context, c models.OperatorCredential, hash string) (models.OperatorCredential, error) {
+	if c.ID == "" {
+		id, err := mintID(s.db, "opcred", seqCredential)
+		if err != nil {
+			return models.OperatorCredential{}, err
+		}
+		c.ID = id
+	}
+	now := time.Now().UTC()
+	if c.CreatedAt.IsZero() {
+		c.CreatedAt = now
+	}
+	if c.UpdatedAt.IsZero() {
+		c.UpdatedAt = now
+	}
+	rec := credentialRecord{
+		ID:           c.ID,
+		SubjectID:    c.SubjectID,
+		Email:        c.Email,
+		PasswordHash: hash,
+		CreatedAt:    c.CreatedAt,
+		UpdatedAt:    c.UpdatedAt,
+		DisabledAt:   c.DisabledAt,
+	}
+	if err := s.st.Insert(ctx, roleCredential, rec); err != nil {
 		mapped := classify(err)
 		if isConflictOn(mapped, "email") {
 			return models.OperatorCredential{}, models.ErrOperatorEmailTaken
 		}
 		return models.OperatorCredential{}, mapped
 	}
-	return gormstore.CredentialFromRow(row), nil
+	return rec.credential(), nil
 }
 
-// Verifier returns a credential and its stored hash, by address.
-//
-// **The one query in this package that selects password_hash.** A disabled
-// credential comes back with ErrOperatorDisabled rather than being filtered
-// out, so a caller can record which one it was while still answering the
-// wire with the sentence a wrong password gets.
 func (s *OperatorStore) Verifier(ctx context.Context, email string) (models.OperatorCredential, string, error) {
-	var row gormstore.CredentialRow
-	err := s.db.WithContext(ctx).Table(s.tables.OperatorCredentials).Where("email = ?", email).First(&row).Error
-	if err == gorm.ErrRecordNotFound {
+	rec, err := s.record(ctx, columnName("Email"), email)
+	if errors.Is(err, errNoRow) {
 		return models.OperatorCredential{}, "", models.ErrOperatorNotFound
 	}
 	if err != nil {
 		return models.OperatorCredential{}, "", classify(err)
 	}
-	cred := gormstore.CredentialFromRow(row)
+	cred := rec.credential()
 	if cred.Disabled() {
-		return cred, row.PasswordHash, models.ErrOperatorDisabled
+		return cred, rec.PasswordHash, models.ErrOperatorDisabled
 	}
-	return cred, row.PasswordHash, nil
+	return cred, rec.PasswordHash, nil
 }
 
-// Get returns a credential by id.
 func (s *OperatorStore) Get(ctx context.Context, id string) (models.OperatorCredential, error) {
-	var row gormstore.CredentialRow
-	err := s.db.WithContext(ctx).Table(s.tables.OperatorCredentials).Where("id = ?", id).First(&row).Error
-	if err == gorm.ErrRecordNotFound {
+	rec, err := s.record(ctx, columnName("ID"), id)
+	if errors.Is(err, errNoRow) {
 		return models.OperatorCredential{}, models.ErrOperatorNotFound
 	}
 	if err != nil {
 		return models.OperatorCredential{}, classify(err)
 	}
-	return gormstore.CredentialFromRow(row), nil
+	return rec.credential(), nil
 }
 
-// ListForMember returns every credential bound to a member, disabled ones
-// included — a withdrawn credential is part of the record of who could once
-// sign in, and hiding it makes that record unreadable.
-func (s *OperatorStore) ListForMember(ctx context.Context, memberID string) ([]models.OperatorCredential, error) {
-	var rows []gormstore.CredentialRow
-	err := s.db.WithContext(ctx).Table(s.tables.OperatorCredentials).
-		Where("member_id = ?", memberID).Order("id").Find(&rows).Error
+func (s *OperatorStore) ListForSubject(ctx context.Context, subjectID string) ([]models.OperatorCredential, error) {
+	q := s.st.Query(ctx, roleCredential).
+		Where(columnName("SubjectID")+" = ?", subjectID).
+		Order(columnName("ID"))
+	recs, err := listOf[credentialRecord](s.st, q, roleCredential)
 	if err != nil {
 		return nil, classify(err)
 	}
-	out := make([]models.OperatorCredential, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, gormstore.CredentialFromRow(r))
+	out := make([]models.OperatorCredential, 0, len(recs))
+	for _, r := range recs {
+		out = append(out, r.credential())
 	}
 	return out, nil
 }
 
-// SetPassword replaces the verifier. It does not clear the lock-out: a
-// password change is not proof that the guesser has gone.
 func (s *OperatorStore) SetPassword(ctx context.Context, id, hash string) error {
-	res := s.db.WithContext(ctx).Table(s.tables.OperatorCredentials).Where("id = ?", id).
-		Updates(map[string]any{"password_hash": hash, "updated_at": time.Now().UTC()})
+	res := s.st.Query(ctx, roleCredential).
+		Where(columnName("ID")+" = ?", id).
+		Updates(map[string]any{
+			columnName("PasswordHash"): hash,
+			columnName("UpdatedAt"):    storedTime(time.Now().UTC()),
+		})
 	if res.Error != nil {
 		return classify(res.Error)
 	}
@@ -110,33 +117,36 @@ func (s *OperatorStore) SetPassword(ctx context.Context, id, hash string) error 
 	return nil
 }
 
-// Disable withdraws access in place, idempotently — `WHERE disabled_at IS
-// NULL` keeps the original stamp rather than overwriting it with a later
-// clock, which would lose when access actually ended.
 func (s *OperatorStore) Disable(ctx context.Context, id string) error {
 	now := time.Now().UTC()
-	res := s.db.WithContext(ctx).Table(s.tables.OperatorCredentials).
-		Where("id = ? AND disabled_at IS NULL", id).
-		Updates(map[string]any{"disabled_at": now, "updated_at": now})
+	res := s.st.Query(ctx, roleCredential).
+		Where(columnName("ID")+" = ?", id).
+		Where(unsetText(columnName("DisabledAt"))).
+		Updates(map[string]any{
+			columnName("DisabledAt"): storedTime(now),
+			columnName("UpdatedAt"):  storedTime(now),
+		})
 	if res.Error != nil {
 		return classify(res.Error)
 	}
 	if res.RowsAffected > 0 {
 		return nil
 	}
-	// Zero rows means either "no such credential" or "already disabled", and
-	// only one of those is an error. One extra read settles it rather than
-	// reporting a missing row for an act that has already happened.
 	if _, err := s.Get(ctx, id); err != nil {
 		return err
 	}
 	return nil
 }
 
-// isConflictOn reports whether err is an ErrConflict naming a field
-// containing needle — used to translate a generic unique-violation into
-// ErrOperatorEmailTaken without matching on every possible constraint name
-// the two dialects spell differently.
+func (s *OperatorStore) record(ctx context.Context, column, value string) (credentialRecord, error) {
+	var out credentialRecord
+	q := s.st.Query(ctx, roleCredential).Where(column+" = ?", value)
+	if err := s.st.Take(q, roleCredential, &out, errNoRow); err != nil {
+		return credentialRecord{}, err
+	}
+	return out, nil
+}
+
 func isConflictOn(err error, needle string) bool {
 	fe, ok := err.(*fieldError)
 	return ok && fe.err == ErrConflict && strings.Contains(fe.field, needle)

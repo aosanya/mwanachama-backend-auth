@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
@@ -34,7 +33,7 @@ func TestSaltCarriesNoSecret(t *testing.T) {
 
 func TestHashIsHMACUnderTheLiveSalt(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	s := mustPhoneSaltStore(t, db, tables)
 	ctx := context.Background()
 	secret := []byte("organization-key-v1")
 	if _, err := s.Provision(ctx, 1, secret, ""); err != nil {
@@ -57,7 +56,7 @@ func TestHashIsHMACUnderTheLiveSalt(t *testing.T) {
 
 func TestHashChangesWithTheSalt(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	s := mustPhoneSaltStore(t, db, tables)
 	ctx := context.Background()
 	if _, err := s.Provision(ctx, 1, []byte("salt-one"), ""); err != nil {
 		t.Fatalf("Provision: %v", err)
@@ -84,7 +83,7 @@ func TestHashChangesWithTheSalt(t *testing.T) {
 
 func TestHashRefusesWithNoLiveSalt(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	s := mustPhoneSaltStore(t, db, tables)
 	ctx := context.Background()
 	if _, _, err := s.Hash(ctx, "+254712445678"); !errors.Is(err, models.ErrPhoneSaltNotFound) {
 		t.Fatalf("Hash with no salt = %v, want ErrPhoneSaltNotFound", err)
@@ -102,7 +101,7 @@ func TestHashRefusesWithNoLiveSalt(t *testing.T) {
 
 func TestProvisionRefusesASecondLiveSalt(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	s := mustPhoneSaltStore(t, db, tables)
 	ctx := context.Background()
 	if _, err := s.Provision(ctx, 1, []byte("a"), ""); err != nil {
 		t.Fatalf("Provision: %v", err)
@@ -114,7 +113,7 @@ func TestProvisionRefusesASecondLiveSalt(t *testing.T) {
 
 func TestRetireStampsThePairAndRefusesTwice(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	s := mustPhoneSaltStore(t, db, tables)
 	ctx := context.Background()
 	if _, err := s.Provision(ctx, 1, []byte("k"), ""); err != nil {
 		t.Fatalf("Provision: %v", err)
@@ -150,7 +149,7 @@ func TestRetireStampsThePairAndRefusesTwice(t *testing.T) {
 
 func TestListIsNewestFirst(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	s := mustPhoneSaltStore(t, db, tables)
 	ctx := context.Background()
 	for i := 1; i <= 3; i++ {
 		if _, err := s.Provision(ctx, i, []byte{byte(i)}, ""); err != nil {
@@ -179,7 +178,7 @@ func TestListIsNewestFirst(t *testing.T) {
 // not an error.
 func TestListEmptyBeforeProvisioning(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewPhoneSaltStore(db, tables)
+	s := mustPhoneSaltStore(t, db, tables)
 	got, err := s.List(context.Background())
 	if err != nil {
 		t.Fatalf("List: %v", err)

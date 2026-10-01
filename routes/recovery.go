@@ -23,14 +23,14 @@ import (
 func RecoveryRequest(auth mwanachamaauth.AuthRepository, echoChallengeCode bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
-			MemberID string `json:"member_id"`
+			SubjectID string `json:"member_id"`
 		}
-		if err := httpwire.ReadJSON(r, &in); err != nil || in.MemberID == "" {
+		if err := httpwire.ReadJSON(r, &in); err != nil || in.SubjectID == "" {
 			httpwire.WriteErr(w, http.StatusBadRequest, "member_id required")
 			return
 		}
 		c, err := auth.CreateChallenge(r.Context(), mwanachamaauth.Challenge{
-			Kind: mwanachamaauth.KindRecovery, MemberID: in.MemberID,
+			Kind: mwanachamaauth.KindRecovery, SubjectID: in.SubjectID,
 			Secret: randHex(8),
 		})
 		if err != nil {
@@ -38,7 +38,7 @@ func RecoveryRequest(auth mwanachamaauth.AuthRepository, echoChallengeCode bool)
 			return
 		}
 		// DEV-1267 · the response is written out by hand rather than via
-		// Challenge.Public(): Public() only blanks MemberID and leaves
+		// Challenge.Public(): Public() only blanks SubjectID and leaves
 		// Secret, and a recovery code is not a nonce meant to be public the
 		// way the device door's is.
 		body := map[string]any{
@@ -82,11 +82,11 @@ func RecoveryVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, tt
 		}
 		// keepID is empty: this door mints no device of its own, so every
 		// device the member had is ejected.
-		if _, err := auth.SignOutOtherDevices(r.Context(), c.MemberID, "", time.Now().UTC()); err != nil {
+		if _, err := auth.SignOutOtherDevices(r.Context(), c.SubjectID, "", time.Now().UTC()); err != nil {
 			writeAuthErr(w, err)
 			return
 		}
-		s, err := minter.Mint(r.Context(), c.MemberID, "", ttl)
+		s, err := minter.Mint(r.Context(), c.SubjectID, "", ttl)
 		if err != nil {
 			httpwire.WriteErr(w, http.StatusInternalServerError, "could not mint a session")
 			return

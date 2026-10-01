@@ -6,13 +6,12 @@ import (
 	"testing"
 	"time"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
 func TestAuthChallengeConsumeExpiry(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	c, err := s.CreateChallenge(ctx, models.Challenge{Kind: models.KindDevice, DeviceID: "d", Secret: "n"})
@@ -41,7 +40,7 @@ func TestAuthChallengeConsumeExpiry(t *testing.T) {
 
 func TestAuthChallengeExpired(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -59,7 +58,7 @@ func TestAuthChallengeExpired(t *testing.T) {
 
 func TestAuthChallengeMissingIsNotFound(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
 	if _, err := s.GetChallenge(ctx, "chal-nope"); !errors.Is(err, models.ErrAuthNotFound) {

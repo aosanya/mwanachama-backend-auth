@@ -13,7 +13,7 @@ import (
 	"github.com/aosanya/mwanachama-backend-shared/httpwire"
 )
 
-// SetVerification handles PUT /members/{memberID}/verification — how an
+// SetVerification handles PUT /members/{subjectID}/verification — how an
 // operator *decides* an application.
 //
 // DEV-1173 · updated_at is the record's own clock; models.VerificationStore.Set
@@ -33,17 +33,17 @@ func SetVerification(verification mwanachamaauth.VerificationRepository) http.Ha
 			httpwire.WriteErr(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		memberID := r.PathValue("memberID")
+		subjectID := r.PathValue("subjectID")
 
 		// Read-modify-write. Get synthesizes an "unverified" record for a
 		// member with no row yet, so a first decision is still an ordinary
 		// upsert and this cannot 404 a member who has never applied.
-		cur, err := verification.Get(r.Context(), memberID)
+		cur, err := verification.Get(r.Context(), subjectID)
 		if err != nil {
 			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
-		cur.MemberID = memberID
+		cur.SubjectID = subjectID
 		cur.Status = in.Status
 		cur.Note = in.Note
 
@@ -57,9 +57,9 @@ func SetVerification(verification mwanachamaauth.VerificationRepository) http.Ha
 }
 
 // VerificationRoutes is SetVerification alone, addressed under
-// /members/{memberID}/verification.
+// /members/{subjectID}/verification.
 func VerificationRoutes(verification mwanachamaauth.VerificationRepository) []Route {
 	return []Route{
-		{Method: http.MethodPut, Path: "/members/{memberID}/verification", Handler: SetVerification(verification)},
+		{Method: http.MethodPut, Path: "/members/{subjectID}/verification", Handler: SetVerification(verification)},
 	}
 }

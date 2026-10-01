@@ -20,7 +20,7 @@ func TestChallengeKindValues(t *testing.T) {
 }
 
 func TestDeviceJSONFields(t *testing.T) {
-	d := Device{ID: "d1", MemberID: "m1", PublicKey: "pk", Name: "phone", CreatedAt: time.Unix(0, 0).UTC()}
+	d := Device{ID: "d1", SubjectID: "m1", PublicKey: "pk", Name: "phone", CreatedAt: time.Unix(0, 0).UTC()}
 	b, err := json.Marshal(d)
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)

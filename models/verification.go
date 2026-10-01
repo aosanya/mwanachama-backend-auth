@@ -32,7 +32,7 @@ const (
 // made, and an operator reviewing GET sees exactly what was submitted
 // alongside the status they are about to set.
 type VerificationRecord struct {
-	MemberID   string             `json:"member_id"`
+	SubjectID  string             `json:"member_id"`
 	Status     VerificationStatus `json:"status"`
 	Note       string             `json:"note,omitempty"`
 	FullName   string             `json:"full_name,omitempty"`
@@ -49,7 +49,7 @@ type VerificationRepository interface {
 	// verification.postgres/memory stores, whose Get this repo's own
 	// VerificationStore ports unchanged. A caller may therefore Set the first
 	// decision for any member id without a prior row ever existing.
-	Get(ctx context.Context, memberID string) (VerificationRecord, error)
+	Get(ctx context.Context, subjectID string) (VerificationRecord, error)
 	// Set upserts a verification record.
 	Set(ctx context.Context, r VerificationRecord) (VerificationRecord, error)
 }

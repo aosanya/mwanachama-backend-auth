@@ -63,7 +63,7 @@ const (
 // longer sign in — that is the intended posture, not a regression.
 type Device struct {
 	ID        string    `json:"id"`
-	MemberID  string    `json:"member_id"`
+	SubjectID string    `json:"member_id"`
 	PublicKey string    `json:"public_key"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
@@ -101,11 +101,11 @@ type Device struct {
 type SignOutReason string
 
 const (
-	// SignOutByMember is the handset signing itself out (DEV-1272, M143).
+	// SignOutBySelf is the handset signing itself out (DEV-1272, M143).
 	// **Only ever the presenting device**: G99's rule is that a device may
 	// only sign itself out, because on the branch that matters the attacker
 	// holds the other phone — which is why M135 carries no control at all.
-	SignOutByMember SignOutReason = "member"
+	SignOutBySelf SignOutReason = "self"
 	// SignOutByRecovery is a successful recovery ejecting every OTHER handset
 	// the member had (device.md:89, G96 both branches). It is the only value
 	// any screen currently produces, and it is written by the recovery flow —
@@ -124,7 +124,7 @@ type Challenge struct {
 	DeviceID  string        `json:"device_id,omitempty"`
 	Phone     string        `json:"phone,omitempty"`
 	Secret    string        `json:"secret"` // nonce (device) or code (phone/recovery)
-	MemberID  string        `json:"member_id,omitempty"`
+	SubjectID string        `json:"member_id,omitempty"`
 	ExpiresAt time.Time     `json:"expires_at"`
 	Consumed  bool          `json:"consumed"`
 }
@@ -134,17 +134,17 @@ type Challenge struct {
 //
 // DEV-1217 · the device door is public by necessity — proving a device is how
 // a session is first obtained, so there is no session to check — and it used
-// to answer the whole struct, MemberID included. Device ids are sequential on
+// to answer the whole struct, SubjectID included. Device ids are sequential on
 // both of the gateway's original stores, so anon walked the id space and read
 // the owning member id off each 201: a device->member map built with no
 // account at all, which is the input DEV-1182's takeover and DEV-1163's
 // harvest both start from.
 //
-// MemberID is the only field a signing client has never needed. It signs the
+// SubjectID is the only field a signing client has never needed. It signs the
 // nonce; the session minted afterwards carries the member id, read
 // server-side from the stored challenge, never from the client.
 func (c Challenge) Public() Challenge {
-	c.MemberID = ""
+	c.SubjectID = ""
 	return c
 }
 
@@ -170,6 +170,7 @@ type PhoneAttempt struct {
 	Phone       string    `json:"phone"`
 	Failed      int       `json:"failed_attempts"`
 	LockedUntil time.Time `json:"locked_until,omitempty"`
+	UpdatedAt   time.Time `json:"-"`
 }
 
 // Locked reports whether the number is barred as of now.
@@ -238,7 +239,7 @@ type AuthRepository interface {
 	// every one of them. Already-signed-out devices keep their first date and
 	// reason and are not returned, so the result is exactly what this recovery
 	// ended and is what a notification would be built from.
-	SignOutOtherDevices(ctx context.Context, memberID, keepID string, at time.Time) ([]Device, error)
+	SignOutOtherDevices(ctx context.Context, subjectID, keepID string, at time.Time) ([]Device, error)
 
 	CreateChallenge(ctx context.Context, c Challenge) (Challenge, error)
 	GetChallenge(ctx context.Context, id string) (Challenge, error)
@@ -261,15 +262,15 @@ type AuthRepository interface {
 	// device change but not a success.
 	ClearPhoneAttempts(ctx context.Context, phone string) error
 
-	// MemberIDForPhone returns the member bound to a phone number, minting one
-	// via mintMember on first sight.
+	// SubjectIDForPhone returns the member bound to a phone number, minting one
+	// via mintSubject on first sight.
 	//
-	// DEV-1263 · a mintMember that returns "" means *do not bind*: the lookup
+	// DEV-1263 · a mintSubject that returns "" means *do not bind*: the lookup
 	// answers "" with no error and writes nothing. That is how the challenge
 	// door asks the question without answering it, because M37 promises
 	// "Nothing exists until you confirm the code" and the mint therefore
 	// belongs on the verify path. An implementation that binds "" instead of
 	// skipping the write leaves a phone pointing at no member, which reads as
 	// "already bound" forever after.
-	MemberIDForPhone(ctx context.Context, phone string, mintMember func() string) (string, error)
+	SubjectIDForPhone(ctx context.Context, phone string, mintSubject func() string) (string, error)
 }

@@ -103,7 +103,7 @@ func OperatorSignIn(ops mwanachamaauth.OperatorRepository, minter SessionMinter,
 			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
 		}
-		s, err := minter.Mint(r.Context(), cred.MemberID, "", ttl)
+		s, err := minter.Mint(r.Context(), cred.SubjectID, "", ttl)
 		if err != nil {
 			httpwire.WriteErr(w, http.StatusInternalServerError, "could not mint a session")
 			return
@@ -151,7 +151,7 @@ func ChangeOperatorPassword(ops mwanachamaauth.OperatorRepository, identity Iden
 		}
 		// The credential must be the caller's own, taken off identity —
 		// never off the body.
-		if cred.MemberID != identity.CallerID(r) {
+		if cred.SubjectID != identity.CallerID(r) {
 			httpwire.WriteErr(w, http.StatusForbidden, "that console sign-in is not yours")
 			return
 		}
@@ -193,10 +193,10 @@ func DisableOperatorCredential(ops mwanachamaauth.OperatorRepository) http.Handl
 	}
 }
 
-// ListOperatorCredentials handles GET /members/{memberID}/operator-credentials.
+// ListOperatorCredentials handles GET /members/{subjectID}/operator-credentials.
 func ListOperatorCredentials(ops mwanachamaauth.OperatorRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		out, err := ops.ListForMember(r.Context(), r.PathValue("memberID"))
+		out, err := ops.ListForSubject(r.Context(), r.PathValue("subjectID"))
 		if err != nil {
 			httpwire.WriteErr(w, http.StatusInternalServerError, "internal error")
 			return
@@ -219,12 +219,12 @@ func OperatorSignInRoutes(ops mwanachamaauth.OperatorRepository, minter SessionM
 // OperatorCredentialRoutes is the three credential-management operations —
 // change-password, disable, list — addressed under /operator/password,
 // /operator/credentials/{credentialID} and
-// /members/{memberID}/operator-credentials. createOperatorCredential is
+// /members/{subjectID}/operator-credentials. createOperatorCredential is
 // deliberately not here; see doc.go.
 func OperatorCredentialRoutes(ops mwanachamaauth.OperatorRepository, identity Identity) []Route {
 	return []Route{
 		{Method: http.MethodPut, Path: "/operator/password", Handler: ChangeOperatorPassword(ops, identity)},
 		{Method: http.MethodDelete, Path: "/operator/credentials/{credentialID}", Handler: DisableOperatorCredential(ops)},
-		{Method: http.MethodGet, Path: "/members/{memberID}/operator-credentials", Handler: ListOperatorCredentials(ops)},
+		{Method: http.MethodGet, Path: "/members/{subjectID}/operator-credentials", Handler: ListOperatorCredentials(ops)},
 	}
 }

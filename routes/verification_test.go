@@ -13,12 +13,12 @@ import (
 
 func TestSetVerificationCarriesForwardSubmittedFields(t *testing.T) {
 	db, tables := newTestDB(t)
-	verification := mwanachamaauth.NewVerificationStore(db, tables)
+	verification := mustVerificationStore(t, db, tables)
 	ctx := context.Background()
 
 	// A prior self-submission the operator's PUT must not clobber.
 	if _, err := verification.Set(ctx, mwanachamaauth.VerificationRecord{
-		MemberID: "m1", Status: mwanachamaauth.VerificationStatusPending,
+		SubjectID: "m1", Status: mwanachamaauth.VerificationStatusPending,
 		FullName: "Jane Member", Phone: "+254700000000", WorkflowID: "wf-1",
 	}); err != nil {
 		t.Fatalf("seed Set: %v", err)
@@ -27,7 +27,7 @@ func TestSetVerificationCarriesForwardSubmittedFields(t *testing.T) {
 	handler := routes.SetVerification(verification)
 	req := httptest.NewRequest(http.MethodPut, "/members/m1/verification",
 		strings.NewReader(`{"status":"verified","note":"ID confirmed"}`))
-	req.SetPathValue("memberID", "m1")
+	req.SetPathValue("subjectID", "m1")
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 	if rec.Code != http.StatusOK {
@@ -47,12 +47,12 @@ func TestSetVerificationCarriesForwardSubmittedFields(t *testing.T) {
 // default: a member with no row at all still gets a clean first decision.
 func TestSetVerificationOpensAnUnappliedForMemberFirst(t *testing.T) {
 	db, tables := newTestDB(t)
-	verification := mwanachamaauth.NewVerificationStore(db, tables)
+	verification := mustVerificationStore(t, db, tables)
 
 	handler := routes.SetVerification(verification)
 	req := httptest.NewRequest(http.MethodPut, "/members/never-applied/verification",
 		strings.NewReader(`{"status":"rejected","note":"no ID presented"}`))
-	req.SetPathValue("memberID", "never-applied")
+	req.SetPathValue("subjectID", "never-applied")
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 	if rec.Code != http.StatusOK {

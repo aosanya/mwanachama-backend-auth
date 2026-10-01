@@ -55,7 +55,7 @@ func DeviceChallenge(auth mwanachamaauth.AuthRepository) http.HandlerFunc {
 			return
 		}
 		c, err := auth.CreateChallenge(r.Context(), mwanachamaauth.Challenge{
-			Kind: mwanachamaauth.KindDevice, DeviceID: dev.ID, MemberID: dev.MemberID,
+			Kind: mwanachamaauth.KindDevice, DeviceID: dev.ID, SubjectID: dev.SubjectID,
 			Secret: randHex(16),
 		})
 		if err != nil {
@@ -122,7 +122,7 @@ func DeviceVerify(auth mwanachamaauth.AuthRepository, minter SessionMinter, ttl 
 			httpwire.WriteErr(w, http.StatusUnauthorized, "device proof invalid")
 			return
 		}
-		s, err := minter.Mint(r.Context(), c.MemberID, deviceID, ttl)
+		s, err := minter.Mint(r.Context(), c.SubjectID, deviceID, ttl)
 		if err != nil {
 			httpwire.WriteErr(w, http.StatusInternalServerError, "could not mint a session")
 			return

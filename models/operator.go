@@ -73,8 +73,8 @@ const OperatorLockAfter = 5
 // the sign-in path. A hash on the struct is a hash that eventually gets
 // marshalled into a response by a handler that returned the wrong thing.
 type OperatorCredential struct {
-	ID       string `json:"id"`
-	MemberID string `json:"member_id"`
+	ID        string `json:"id"`
+	SubjectID string `json:"member_id"`
 	// Email is stored normalized — see Normalize. The address as typed is not
 	// kept: two spellings of one address must not be two credentials.
 	Email      string     `json:"email"`
@@ -184,10 +184,10 @@ type OperatorRepository interface {
 	// Get returns a credential by id.
 	Get(ctx context.Context, id string) (OperatorCredential, error)
 
-	// ListForMember returns every credential bound to a member, disabled ones
+	// ListForSubject returns every credential bound to a member, disabled ones
 	// included — a withdrawn credential is part of the record of who could
 	// once sign in, and hiding it makes that record unreadable.
-	ListForMember(ctx context.Context, memberID string) ([]OperatorCredential, error)
+	ListForSubject(ctx context.Context, subjectID string) ([]OperatorCredential, error)
 
 	// SetPassword replaces the verifier. It does not clear the lock-out: a
 	// password change is not proof that the guesser has gone.

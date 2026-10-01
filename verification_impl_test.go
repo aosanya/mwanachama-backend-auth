@@ -4,21 +4,20 @@ import (
 	"context"
 	"testing"
 
-	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
 
 func TestVerificationDefaultsToUnverified(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewVerificationStore(db, tables)
+	s := mustVerificationStore(t, db, tables)
 	ctx := context.Background()
 
 	r, err := s.Get(ctx, "m-1")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	if r.MemberID != "m-1" {
-		t.Fatalf("expected member id echoed, got %q", r.MemberID)
+	if r.SubjectID != "m-1" {
+		t.Fatalf("expected member id echoed, got %q", r.SubjectID)
 	}
 	if r.Status != models.VerificationStatusUnverified {
 		t.Fatalf("expected VerificationStatusUnverified, got %q", r.Status)
@@ -30,13 +29,13 @@ func TestVerificationDefaultsToUnverified(t *testing.T) {
 
 func TestVerificationSetThenGet(t *testing.T) {
 	db, tables := newTestDB(t)
-	s := mwanachamaauth.NewVerificationStore(db, tables)
+	s := mustVerificationStore(t, db, tables)
 	ctx := context.Background()
 
 	if _, err := s.Set(ctx, models.VerificationRecord{
-		MemberID: "m-2",
-		Status:   models.VerificationStatusVerified,
-		Note:     "ID card confirmed",
+		SubjectID: "m-2",
+		Status:    models.VerificationStatusVerified,
+		Note:      "ID card confirmed",
 	}); err != nil {
 		t.Fatalf("set: %v", err)
 	}
@@ -57,7 +56,7 @@ func TestVerificationSetThenGet(t *testing.T) {
 	// not the caller — says when. DEV-1173: a caller-supplied UpdatedAt must
 	// never be honoured.
 	if _, err := s.Set(ctx, models.VerificationRecord{
-		MemberID:  "m-2",
+		SubjectID: "m-2",
 		Status:    models.VerificationStatusRejected,
 		Note:      "insufficient docs",
 		UpdatedAt: firstStamp.AddDate(1, 0, 0),

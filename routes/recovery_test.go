@@ -14,7 +14,7 @@ import (
 
 func TestRecoveryRequestAndVerifyHappyPath(t *testing.T) {
 	db, tables := newTestDB(t)
-	auth := mwanachamaauth.NewAuthStore(db, tables)
+	auth := mustAuthStore(t, db, tables)
 
 	requestHandler := routes.RecoveryRequest(auth, true) // echo on, so the test can read the secret
 	req := httptest.NewRequest(http.MethodPost, "/recovery/request", strings.NewReader(`{"member_id":"m1"}`))
@@ -33,7 +33,7 @@ func TestRecoveryRequestAndVerifyHappyPath(t *testing.T) {
 
 	// Register a device for m1 first, so the sweep has something to eject.
 	ctx := context.Background()
-	dev, err := auth.RegisterDevice(ctx, mwanachamaauth.Device{MemberID: "m1", PublicKey: "pk"})
+	dev, err := auth.RegisterDevice(ctx, mwanachamaauth.Device{SubjectID: "m1", PublicKey: "pk"})
 	if err != nil {
 		t.Fatalf("RegisterDevice: %v", err)
 	}
@@ -65,10 +65,10 @@ func TestRecoveryRequestAndVerifyHappyPath(t *testing.T) {
 // TestRecoveryVerifyRefusesWrongSecret and does not mint a session.
 func TestRecoveryVerifyRefusesWrongSecret(t *testing.T) {
 	db, tables := newTestDB(t)
-	auth := mwanachamaauth.NewAuthStore(db, tables)
+	auth := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
-	c, err := auth.CreateChallenge(ctx, mwanachamaauth.Challenge{Kind: mwanachamaauth.KindRecovery, MemberID: "m1", Secret: "abc123"})
+	c, err := auth.CreateChallenge(ctx, mwanachamaauth.Challenge{Kind: mwanachamaauth.KindRecovery, SubjectID: "m1", Secret: "abc123"})
 	if err != nil {
 		t.Fatalf("CreateChallenge: %v", err)
 	}

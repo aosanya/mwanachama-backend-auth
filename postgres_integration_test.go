@@ -60,14 +60,14 @@ func newPostgresDB(t *testing.T) (*gorm.DB, mwanachamaauth.TableNames) {
 // actually works against a real SEQUENCE, which sqlite has no equivalent of.
 func TestPostgresDeviceIDsAreSequenceMinted(t *testing.T) {
 	db, tables := newPostgresDB(t)
-	s := mwanachamaauth.NewAuthStore(db, tables)
+	s := mustAuthStore(t, db, tables)
 	ctx := context.Background()
 
-	a, err := s.RegisterDevice(ctx, models.Device{MemberID: "m1", PublicKey: "pk-a"})
+	a, err := s.RegisterDevice(ctx, models.Device{SubjectID: "m1", PublicKey: "pk-a"})
 	if err != nil {
 		t.Fatalf("RegisterDevice: %v", err)
 	}
-	b, err := s.RegisterDevice(ctx, models.Device{MemberID: "m1", PublicKey: "pk-b"})
+	b, err := s.RegisterDevice(ctx, models.Device{SubjectID: "m1", PublicKey: "pk-b"})
 	if err != nil {
 		t.Fatalf("RegisterDevice: %v", err)
 	}
