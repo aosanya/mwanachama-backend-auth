@@ -77,6 +77,9 @@ func (s *PhoneSaltStore) Provision(ctx context.Context, id int, secret []byte, s
 		SetAt:  time.Now().UTC(),
 		SetBy:  setBy,
 	}
+	if err := check(s.st.Object(roleSalt), rec); err != nil {
+		return models.Salt{}, err
+	}
 	if err := s.st.Insert(ctx, roleSalt, rec); err != nil {
 		mapped := classify(err)
 		if errors.Is(mapped, ErrConflict) {

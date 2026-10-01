@@ -17,15 +17,13 @@ import (
 	"github.com/aosanya/mwanachama-backend-auth/routes"
 )
 
-const testSpecPath = "../auth.platform.json"
-
 func newTestDB(t *testing.T) (*gorm.DB, *spec.Spec) {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("gorm.Open: %v", err)
 	}
-	s, err := mwanachamaauth.LoadSpec(testSpecPath)
+	s, err := mwanachamaauth.SpecFor("test")
 	if err != nil {
 		t.Fatalf("LoadSpec: %v", err)
 	}

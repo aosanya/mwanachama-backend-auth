@@ -50,6 +50,9 @@ func (s *OperatorStore) Create(ctx context.Context, c models.OperatorCredential,
 		UpdatedAt:    c.UpdatedAt,
 		DisabledAt:   c.DisabledAt,
 	}
+	if err := check(s.st.Object(roleCredential), rec); err != nil {
+		return models.OperatorCredential{}, err
+	}
 	if err := s.st.Insert(ctx, roleCredential, rec); err != nil {
 		mapped := classify(err)
 		if isConflictOn(mapped, "email") {

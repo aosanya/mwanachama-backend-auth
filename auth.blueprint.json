@@ -80,7 +80,8 @@
         {
           "name": "phone",
           "type": "string",
-          "description": "The number being proved, for a phone or recovery challenge. Canonical E.164."
+          "description": "The number being proved, for a phone or recovery challenge. Canonical E.164.",
+          "matches": "e164"
         },
         {
           "name": "secret",
@@ -114,7 +115,8 @@
           "name": "phone",
           "type": "string",
           "description": "The number the failures are counted against. Canonical E.164.",
-          "primary": true
+          "primary": true,
+          "matches": "e164"
         },
         {
           "name": "failed",
@@ -142,7 +144,8 @@
           "name": "phone",
           "type": "string",
           "description": "The number. Canonical E.164.",
-          "primary": true
+          "primary": true,
+          "matches": "e164"
         },
         {
           "name": "subject_id",
@@ -173,7 +176,8 @@
           "type": "string",
           "description": "The normalised address this credential is found by. Unique, so one address is one credential.",
           "required": true,
-          "unique": true
+          "unique": true,
+          "matches": "email_address"
         },
         {
           "name": "password_hash",
@@ -209,7 +213,8 @@
           "name": "email",
           "type": "string",
           "description": "The normalised address the failures are counted against.",
-          "primary": true
+          "primary": true,
+          "matches": "email_address"
         },
         {
           "name": "failed",

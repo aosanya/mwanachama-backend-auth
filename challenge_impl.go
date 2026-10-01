@@ -18,6 +18,9 @@ func (s *AuthStore) CreateChallenge(ctx context.Context, c models.Challenge) (mo
 	if c.ExpiresAt.IsZero() {
 		c.ExpiresAt = time.Now().UTC().Add(5 * time.Minute)
 	}
+	if err := check(s.st.Object(roleChallenge), c); err != nil {
+		return models.Challenge{}, err
+	}
 	if err := s.st.Insert(ctx, roleChallenge, c); err != nil {
 		return models.Challenge{}, classify(err)
 	}

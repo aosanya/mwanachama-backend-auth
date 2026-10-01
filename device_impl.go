@@ -36,6 +36,9 @@ func (s *AuthStore) RegisterDevice(ctx context.Context, d models.Device) (models
 	if d.CreatedAt.IsZero() {
 		d.CreatedAt = time.Now().UTC()
 	}
+	if err := check(s.st.Object(roleDevice), d); err != nil {
+		return models.Device{}, err
+	}
 	if err := s.st.Insert(ctx, roleDevice, d); err != nil {
 		return models.Device{}, classify(err)
 	}
