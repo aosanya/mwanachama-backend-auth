@@ -22,6 +22,8 @@ import (
 	gormpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/aosanya/mwanachama-backend-shared/spec"
+
 	mwanachamaauth "github.com/aosanya/mwanachama-backend-auth"
 	"github.com/aosanya/mwanachama-backend-auth/models"
 )
@@ -29,7 +31,16 @@ import (
 // newPostgresDB opens POSTGRES_URL, migrates a fresh set of this repo's eight
 // tables and returns the *gorm.DB plus the table names, dropping the tables
 // on cleanup. Skips the calling test if POSTGRES_URL is unset.
-func newPostgresDB(t *testing.T) (*gorm.DB, mwanachamaauth.TableNames) {
+func tableForRole(t *testing.T, s *spec.Spec, role string) string {
+	t.Helper()
+	o, ok := s.ByRole(role)
+	if !ok {
+		t.Fatalf("the declaration fills no %q role", role)
+	}
+	return s.TableFor(o)
+}
+
+func newPostgresDB(t *testing.T) (*gorm.DB, *spec.Spec) {
 	t.Helper()
 	dsn := os.Getenv("POSTGRES_URL")
 	if dsn == "" {
@@ -41,18 +52,20 @@ func newPostgresDB(t *testing.T) (*gorm.DB, mwanachamaauth.TableNames) {
 		t.Fatalf("gorm.Open: %v", err)
 	}
 
-	tables := mwanachamaauth.DefaultTableNames()
-	if err := mwanachamaauth.Migrate(db, tables); err != nil {
-		t.Fatalf("Migrate: %v", err)
+	s, err := mwanachamaauth.SpecFor("pgtest")
+	if err != nil {
+		t.Fatalf("SpecFor: %v", err)
+	}
+	if err := mwanachamaauth.Provision(db, s); err != nil {
+		t.Fatalf("Provision: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = db.Migrator().DropTable(
-			tables.AuthDevices, tables.AuthChallenges, tables.AuthPhones,
-			tables.AuthPhoneAttempts, tables.OperatorCredentials,
-			tables.OperatorAttempts, tables.Verifications, tables.PhoneSalts,
-		)
+		for _, o := range s.Objects {
+			_ = db.Migrator().DropTable(s.TableFor(o))
+		}
+		_ = db.Migrator().DropTable(s.NameRegistryTable())
 	})
-	return db, tables
+	return db, s
 }
 
 // TestPostgresDeviceIDsAreSequenceMinted proves the archived migrations'
@@ -76,20 +89,22 @@ func TestPostgresDeviceIDsAreSequenceMinted(t *testing.T) {
 	}
 }
 
-// TestPostgresPhoneSaltOneLiveIsDatabaseEnforced proves the
-// phone_salt_one_live partial unique index gormstore.Migrate creates really
-// refuses a second concurrent live salt at the database, not just at the
-// Go-level pre-check PhoneSaltStore.Provision also runs.
+// TestPostgresPhoneSaltOneLiveIsDatabaseEnforced proves the one-live-salt
+// expression index Provision applies really refuses a second concurrent live
+// salt at the database, not just at the Go-level pre-check. The index is on an
+// expression rather than a column, which spec.Index has no way to declare, so
+// only a Postgres run exercises what Provision adds beside spec.Migrate.
 func TestPostgresPhoneSaltOneLiveIsDatabaseEnforced(t *testing.T) {
-	db, tables := newPostgresDB(t)
+	db, s := newPostgresDB(t)
+	saltTable := tableForRole(t, s, "salt")
 
 	// Bypass the Go-level guard entirely: insert two "live" rows directly.
-	if err := db.Table(tables.PhoneSalts).Create(map[string]any{
+	if err := db.Table(saltTable).Create(map[string]any{
 		"id": 1, "secret": []byte("a"), "set_at": "now()",
 	}).Error; err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
-	err := db.Table(tables.PhoneSalts).Create(map[string]any{
+	err := db.Table(saltTable).Create(map[string]any{
 		"id": 2, "secret": []byte("b"), "set_at": "now()",
 	}).Error
 	if err == nil {

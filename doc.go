@@ -103,12 +103,13 @@ const (
 	SignOutBySelf     = models.SignOutBySelf
 	SignOutByRecovery = models.SignOutByRecovery
 
-	// VerificationStatusPending, VerificationStatusVerified and
-	// VerificationStatusRejected are forwarded from models. of the same
-	// name.
-	VerificationStatusPending  = models.VerificationStatusPending
-	VerificationStatusVerified = models.VerificationStatusVerified
-	VerificationStatusRejected = models.VerificationStatusRejected
+	// VerificationStatusUnverified, VerificationStatusPending,
+	// VerificationStatusVerified and VerificationStatusRejected are forwarded
+	// from models. of the same name.
+	VerificationStatusUnverified = models.VerificationStatusUnverified
+	VerificationStatusPending    = models.VerificationStatusPending
+	VerificationStatusVerified   = models.VerificationStatusVerified
+	VerificationStatusRejected   = models.VerificationStatusRejected
 
 	// OperatorLockAfter forwards models.OperatorLockAfter.
 	OperatorLockAfter = models.OperatorLockAfter
