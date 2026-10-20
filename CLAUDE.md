@@ -167,6 +167,14 @@ the instance stays readable. Assert on `spec.RawNameFor`, never on a physical
 name, and exclude the per-instance `<instance>_spec_table_names` registry
 from anything that counts tables.
 
+**Member app sessions are not stored here; they are read and ended in the
+identity project** (DEV-1708). `IdentitySessions` calls two locked-down
+`SECURITY DEFINER` functions, `list_sign_in_sessions` and
+`end_sign_in_session`, that `cmd/sessionsql` prints for an operator to apply
+once as `postgres`. They never read the `ip` column, and the user agent is
+classified by `ClassifyUserAgent` and dropped. No service-role key. See
+[2. design/identity-sessions.md](documentation/2.%20design/identity-sessions.md).
+
 **`Provision` is the entry point, not `Migrate`.** It adopts the legacy
 tables, runs `spec.Migrate`, then applies the three things a declaration
 cannot carry: the Postgres `SEQUENCE`s the id minting reads, the one-live-salt

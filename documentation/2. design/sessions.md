@@ -115,7 +115,8 @@ addresses rather than a nil-pointer panic.
   records what was minted.
 - It does not let an owner end somebody else's session. Decision 95 lets an
   agency owner *see* their members' sessions and not end them; those are
-  member app sessions held by Supabase Auth, which is DEV-1708, not this
+  member app sessions held by Supabase Auth, which are
+  [identity-project sessions](identity-sessions.md) (DEV-1708), not this
   table.
 - It does not bound how many live sessions one subject holds or sweep
   expired rows. Neither was asked for; an expired row is invisible to every
