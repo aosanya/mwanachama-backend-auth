@@ -35,5 +35,8 @@ func Sentinels() map[string]error {
 		"ErrPhoneSaltAlreadyLive":      models.ErrPhoneSaltAlreadyLive,
 		"ErrPhoneSaltRetired":          models.ErrPhoneSaltRetired,
 		"ErrPhoneSaltNoActor":          models.ErrPhoneSaltNoActor,
+		"ErrSessionNotFound":           models.ErrSessionNotFound,
+		"ErrSessionInUse":              models.ErrSessionInUse,
+		"ErrSessionInvalid":            models.ErrSessionInvalid,
 	}
 }

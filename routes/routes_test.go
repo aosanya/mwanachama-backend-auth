@@ -18,15 +18,14 @@ func TestRoutesAggregatorReturnsEveryGroup(t *testing.T) {
 		Operators:    mustOperatorStore(t, db, tables),
 		Verification: mustVerificationStore(t, db, tables),
 		PhoneSalts:   mustPhoneSaltStore(t, db, tables),
+		Sessions:     mustSessionStore(t, db, tables),
 		Minter:       &fakeMinter{},
 		TTL:          time.Hour,
 		Identity:     fakeIdentity("m1"),
 	}
 	all := routes.Routes(deps)
-	// device challenge+verify, recovery request+verify, operator signin,
-	// 3 credential-management, verification set, phone-salt list = 10.
-	if len(all) != 10 {
-		t.Fatalf("Routes() returned %d routes, want 10: %+v", len(all), all)
+	if len(all) != 12 {
+		t.Fatalf("Routes() returned %d routes, want 12: %+v", len(all), all)
 	}
 	if got := all[0].Pattern("/v1/auth"); got != "POST /v1/auth/devices/{deviceID}/challenge" {
 		t.Fatalf("Pattern() = %q", got)

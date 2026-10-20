@@ -19,11 +19,13 @@ type Deps struct {
 	Operators    mwanachamaauth.OperatorRepository
 	Verification mwanachamaauth.VerificationRepository
 	PhoneSalts   mwanachamaauth.PhoneSaltRepository
+	Sessions     mwanachamaauth.SessionRepository
 
 	Minter SessionMinter
 	TTL    time.Duration
 
-	Identity Identity
+	Identity       Identity
+	CurrentSession CurrentSession
 
 	AllowUnsignedDeviceProof bool
 	EchoChallengeCode        bool
@@ -49,6 +51,8 @@ func handlers(d Deps) map[string]http.HandlerFunc {
 		"auth.operator_credential.list":    ListOperatorCredentials(d.Operators),
 		"auth.verification.set":            SetVerification(d.Verification),
 		"auth.phone_salt.list":             ListPhoneSalts(d.PhoneSalts),
+		"auth.session.list":                ListOwnSessions(d.Sessions, d.Identity, d.CurrentSession),
+		"auth.session.end":                 EndOwnSession(d.Sessions, d.Identity, d.CurrentSession),
 	}
 }
 

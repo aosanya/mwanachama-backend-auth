@@ -10,8 +10,9 @@ builders any more.
 
 The engine's `dispatch` can build a handler for an operation that names one
 `call` on one manager: decode the request, call the method, encode the
-result. Six of this module's ten addresses are not that shape, and the four
-that are reach four different stores.
+result. Six of this module's twelve addresses are not that shape, four that
+are reach four different stores, and the two session addresses need to know
+which session a request arrived on, which no declared call can carry.
 
 An orchestration is an address whose behaviour is **the order it does things
 in**, not the call it ends with:
@@ -24,6 +25,9 @@ in**, not the call it ends with:
 | `auth.operator.signin` | Counts a failed attempt for an address that holds no credential exactly as for one that does, so the status, the remaining-tries count and the refusal sentence are byte-for-byte identical. The clock is a separate matter and is filed. |
 | `auth.operator.password_change` | Checks the caller owns the credential before replacing the verifier, and does **not** clear the lock-out, because a password change is not proof the guesser has gone. |
 | `auth.recovery.request` | Withholds the secret unless the mount asked for it, a dev-only flag whose zero value is the safe one. |
+
+The session addresses are described in [sessions](sessions.md): ending one
+refuses the session in use before the store is asked, and listing marks it.
 
 Rewriting those as declared calls is exactly where a refactor loses a
 security property, and one of these orderings is already a filed bug

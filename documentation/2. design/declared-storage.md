@@ -1,6 +1,6 @@
 # Declared storage
 
-The eight objects this module stores are declared in
+The nine objects this module stores are declared in
 [`auth.blueprint.json`](../../auth.blueprint.json), not written as Go row
 structs. `gormstore/` and `tables.go` are gone. The engine is
 `mwanachama-backend-shared`'s `spec` and `specstore`; the org-wide reasoning
@@ -18,6 +18,7 @@ is `developer/documentation/2. design/architecture-spec-driven-modules.md`.
 | `credential_attempt` | One address's consecutive-wrong-password state |
 | `verification` | A subject's standing as checked by a reviewer |
 | `salt` | One version of the key phone numbers are hashed under |
+| `session` | One signed-in browser session, found by a digest of its token — see [sessions](sessions.md) |
 
 Two domains are shipped: `auth.platform.json`, which is the one in
 production, and `auth.clinic.json`, which nobody has provisioned. The second
@@ -48,12 +49,15 @@ stand: a clinic, a library and a union would each recognise them.
 
 ## Two carriers are not the models type
 
-Six roles are carried by their `models` type. Two are not, and this is
+Six roles are carried by their `models` type. Three are not, and this is
 deliberate:
 
 - `credentialRecord` holds `password_hash`, which
   `models.OperatorCredential` does not have.
 - `saltRecord` holds `secret`, which `models.Salt` does not have.
+- `sessionRow` holds `token_digest`, which `models.SessionRecord` does not
+  have. It is also the one carrier built over its own carrier map rather
+  than `carriers()`; [sessions](sessions.md) says why.
 
 The standard's own answer for a stored secret is to put it on the model as
 `json:"-"`, the way catalog carries `ShareLink.KeyHash`. That is a **hash**;
@@ -66,10 +70,10 @@ question for the owner, not a settled decision** — see the board.
 ## `nullable` is exactly where the Go field is a pointer
 
 `specstore` refuses a nullable column carried by a plain value, and a pointer
-on a column nobody declared nullable. That resolved cleanly: the only three
-nullable columns are `device.signed_out_at`, `credential.disabled_at` and
-`salt.retired_at` — the three whose model comments already explain that a
-zero instant reads as a real date and is not one.
+on a column nobody declared nullable. That resolved cleanly: the only four
+nullable columns are `device.signed_out_at`, `credential.disabled_at`,
+`salt.retired_at` and `session.ended_at` — the four where a zero instant
+would read as a real date and is not one.
 
 Everything else that used to be SQL `NULL` is now the zero value in a column
 that still accepts `NULL`, so a legacy row reads back the same. The predicate

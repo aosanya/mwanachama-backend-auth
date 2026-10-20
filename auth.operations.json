@@ -89,6 +89,24 @@
       "status": 200,
       "title": "List the phone-hashing salts",
       "description": "Every salt version, newest first, without any secret."
+    },
+    "session_list": {
+      "method": "GET",
+      "path": "/sessions",
+      "handled": true,
+      "action": "auth.session.list",
+      "status": 200,
+      "title": "List my sessions",
+      "description": "The caller's own live sessions, most recently used first, each with its device, when it started and when it was last used, and which one is making this request. Never another subject's, and never a token or a network address."
+    },
+    "session_end": {
+      "method": "DELETE",
+      "path": "/sessions/{sessionID}",
+      "handled": true,
+      "action": "auth.session.end",
+      "status": 204,
+      "title": "End one of my sessions",
+      "description": "Ends one of the caller's own sessions and leaves the rest. A session that is not the caller's answers exactly as one that does not exist, and the session making the request is refused: signing out is how that one ends."
     }
   },
   "errors": {
@@ -104,6 +122,9 @@
     "ErrPhoneSaltNotFound": 404,
     "ErrPhoneSaltAlreadyLive": 409,
     "ErrPhoneSaltRetired": 409,
-    "ErrPhoneSaltNoActor": 400
+    "ErrPhoneSaltNoActor": 400,
+    "ErrSessionNotFound": 404,
+    "ErrSessionInUse": 409,
+    "ErrSessionInvalid": 400
   }
 }

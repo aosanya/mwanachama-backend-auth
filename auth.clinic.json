@@ -81,6 +81,19 @@
       "description": "The key patients' phone numbers are hashed under."
     },
     {
+      "role": "session",
+      "name": "desk_session",
+      "table": "desk_sessions",
+      "description": "A signed-in front-desk session on a clinic workstation.",
+      "indexes": [
+        {
+          "name": "by_subject",
+          "description": "Every session one desk user holds, so they can end the one left open on another workstation.",
+          "fields": ["subject_id"]
+        }
+      ]
+    },
+    {
       "name": "consent",
       "table": "consents",
       "description": "A clinic's own object, with no role in the module: which privacy notice a patient has agreed to. Declared here to show a domain adding a table of its own rather than asking the module for a field.",

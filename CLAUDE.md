@@ -92,14 +92,16 @@ chat/directmessage/moderation:
 
 ## Objects are declared, not written
 
-The eight tables come from `auth.blueprint.json`, not from Go row structs —
+The nine tables come from `auth.blueprint.json`, not from Go row structs —
 see [documentation/2. design/declared-storage.md](documentation/2.%20design/declared-storage.md)
 and the org-wide strategy in
 `developer/documentation/2. design/architecture-spec-driven-modules.md`.
 
-- `auth.blueprint.json` declares the module's **eight objects once**: the
+- `auth.blueprint.json` declares the module's **nine objects once**: the
   roles `device`, `challenge`, `phone_attempt`, `phone_binding`,
-  `credential`, `credential_attempt`, `verification` and `salt`. Reached
+  `credential`, `credential_attempt`, `verification`, `salt` and
+  `session` (DEV-1709, see
+  [2. design/sessions.md](documentation/2.%20design/sessions.md)). Reached
   through `Blueprint()`, `LoadSpec(path)`, `ParseSpec(raw)` and
   `SpecFor(instance)`. Load a domain spec through those, never through
   `spec.Load`, or its roled objects arrive with no fields.
@@ -183,8 +185,9 @@ helper added for this (S48 there) — do not write a per-repo adoption path.
 
 `validate.go` reads `required`, an enum's `values` and a named `matches`
 pattern off the spec and applies them on the four create paths.
-`patterns.go` is the registry: `e164` for the three phone columns and
-`email_address` for the two address columns. A spec naming a pattern nobody
+`patterns.go` is the registry: `e164` for the three phone columns,
+`email_address` for the two address columns and `sha256_hex` for a session's
+token digest. A spec naming a pattern nobody
 supplies is an error, not a rule that quietly never runs.
 
 `Check(s, role, v)` is the same validation without a database, for a caller
@@ -198,7 +201,7 @@ policy, `TriesLeft`, `Challenge.Public`'s redaction, `Device.IsSignedOut`,
 ## routes/ — HTTP surface
 
 **The address table is declared, not written** — `auth.operations.json`
-carries all ten addresses with their method, path, action id, status and
+carries all twelve addresses with their method, path, action id, status and
 description, plus the errors map from every exported sentinel to a status.
 `routes/routes.go`'s `Build` ranges over `dispatch.Handled` and binds a
 handler per action id, refusing by name both a declared action with no
@@ -206,7 +209,7 @@ handler and a handler bound to an action nobody declared. See
 [documentation/2. design/routes.md](documentation/2.%20design/routes.md).
 
 **Every address is declared `handled`, meaning the module supplies the
-handler, and that is not a shortcut.** Six of the ten are orchestrations
+handler, and that is not a shortcut.** Six of the twelve are orchestrations
 whose *ordering* is the security property — a signed-out device refused in
 exactly the words an unknown one gets, a sign-in that counts a failure for an
 address holding no credential so the two refusals cannot be told apart, a
@@ -214,7 +217,8 @@ recovery that ends every other device — and DEV-1701 is already filed against
 one of those orderings. `dispatch.Operation` names exactly one `call`, so
 declaring them as calls would mean rewriting them, which is where the property
 would be lost. The remaining four *are* single calls but reach four different
-stores; dispatching them needs a combined facade (DEV-1706).
+stores; dispatching them needs a combined facade (DEV-1706). The two session
+addresses need `routes.CurrentSession`, which session the request arrived on.
 
 **`AnonymousActions` names what is public, never what is protected.** Five
 action ids, each public by necessity. An address added later and not named

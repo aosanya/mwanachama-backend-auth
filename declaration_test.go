@@ -72,6 +72,9 @@ func TestEveryExampleFitsTheTypes(t *testing.T) {
 			if _, err := mwanachamaauth.NewPhoneSaltStore(db, s); err != nil {
 				t.Errorf("NewPhoneSaltStore: %v", err)
 			}
+			if _, err := mwanachamaauth.NewSessionStore(db, s); err != nil {
+				t.Errorf("NewSessionStore: %v", err)
+			}
 		})
 	}
 }

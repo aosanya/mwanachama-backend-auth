@@ -317,6 +317,61 @@
           "description": "Who retired it. Paired with the retirement instant: a version cannot be retired without naming who did it."
         }
       ]
+    },
+    {
+      "role": "session",
+      "description": "One signed-in browser session, kept so its holder can see where they are signed in and end any one of them. It is found by a digest of its token and never by the token, records the device as a short description derived from the user agent rather than the user agent itself, and keeps no network address. Ending a session keeps its row, so the record of when it ended survives.",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "description": "Storage key, minted by the module. The handle a holder names to end this session; it is not the token and proves nothing.",
+          "primary": true
+        },
+        {
+          "name": "subject_id",
+          "type": "string",
+          "description": "Who signed in. Every read and every end is scoped to it, so one subject can neither list nor end another's session.",
+          "required": true
+        },
+        {
+          "name": "token_digest",
+          "type": "string",
+          "description": "The SHA-256 of the session token, in lower-case hex. The token itself is never stored, so a copy of this table cannot be replayed as a sign-in.",
+          "required": true,
+          "unique": true,
+          "matches": "sha256_hex"
+        },
+        {
+          "name": "device",
+          "type": "string",
+          "description": "What the session was started from, as a short description such as 'Firefox on Linux' derived from the user agent by the module. Empty when the user agent named nothing recognisable."
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp",
+          "description": "When this session was signed in.",
+          "required": true
+        },
+        {
+          "name": "last_used_at",
+          "type": "timestamp",
+          "description": "When this session last carried a request. Only ever moves forward.",
+          "required": true
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp",
+          "description": "When this session stops being honoured whether or not anybody ends it.",
+          "required": true
+        },
+        {
+          "name": "ended_at",
+          "type": "timestamp",
+          "description": "When the holder ended this session, or absent while it has not been ended. Nullable rather than defaulted, because a zero instant reads as an ending and is not one. Kept at the first ending; ending it again does not move it.",
+          "nullable": true
+        }
+      ]
     }
   ]
 }

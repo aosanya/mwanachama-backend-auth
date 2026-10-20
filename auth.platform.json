@@ -72,6 +72,19 @@
       "name": "phone_salt",
       "table": "phone_salts",
       "description": "The key members' phone numbers are hashed under."
+    },
+    {
+      "role": "session",
+      "name": "console_session",
+      "table": "console_sessions",
+      "description": "A signed-in staff console session, listed and ended from its holder's own administration screen.",
+      "indexes": [
+        {
+          "name": "by_subject",
+          "description": "Every session one person holds, which is what their sessions screen reads.",
+          "fields": ["subject_id"]
+        }
+      ]
     }
   ]
 }
