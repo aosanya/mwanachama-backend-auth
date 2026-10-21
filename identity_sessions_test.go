@@ -44,6 +44,20 @@ func (c *identityConn) Prepare(string) (driver.Stmt, error) { return nil, errors
 func (c *identityConn) Close() error                        { return nil }
 func (c *identityConn) Begin() (driver.Tx, error)           { return nil, errors.New("no transactions") }
 
+func (c *identityConn) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	c.p.mu.Lock()
+	defer c.p.mu.Unlock()
+	call := identityCall{query: query}
+	for _, a := range args {
+		call.args = append(call.args, a.Value)
+	}
+	c.p.calls = append(c.p.calls, call)
+	if c.p.err != nil {
+		return nil, c.p.err
+	}
+	return driver.RowsAffected(1), nil
+}
+
 func (c *identityConn) QueryContext(_ context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	c.p.mu.Lock()
 	defer c.p.mu.Unlock()
@@ -93,30 +107,31 @@ func identitySessions(t *testing.T, err error, cols []string, rows ...[]driver.V
 	return mwanachamaauth.IdentitySessions{DB: db}
 }
 
-var listColumns = []string{"session_id", "user_agent", "started_at", "last_refreshed_at"}
+var listColumns = []string{"session_id", "user_agent", "started_at", "last_refreshed_at", "last_seen_at"}
 
 func TestListingCallsTheFunctionWithTheSubjectAsAParameterAndClassifiesEachDevice(t *testing.T) {
 	started := time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)
 	refreshed := time.Date(2026, 10, 20, 9, 30, 0, 0, time.UTC)
+	seen := time.Date(2026, 10, 20, 10, 4, 0, 0, time.UTC)
 	store := identitySessions(t, nil, listColumns,
-		[]driver.Value{sessionA, "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36", started, refreshed},
-		[]driver.Value{"00000000-0000-0000-0000-0000000000a2", "", started, nil},
+		[]driver.Value{sessionA, "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36", started, refreshed, seen},
+		[]driver.Value{"00000000-0000-0000-0000-0000000000a2", "", started, nil, nil},
 	)
 	got, err := store.List(context.Background(), strings.ToUpper(subjectA))
 	if err != nil {
 		t.Fatal(err)
 	}
 	call := theIdentityProject.calls[0]
-	if call.query != "SELECT session_id::text, user_agent, started_at, last_refreshed_at FROM public.list_sign_in_sessions($1::uuid)" {
+	if call.query != "SELECT session_id::text, user_agent, started_at, last_refreshed_at, last_seen_at FROM public.list_sign_in_sessions($1::uuid)" {
 		t.Fatalf("query %q", call.query)
 	}
 	if len(call.args) != 1 || call.args[0] != subjectA {
 		t.Fatalf("args %v, want the canonical subject alone", call.args)
 	}
 	want := []models.IdentitySession{
-		{ID: sessionA, SubjectID: subjectA, StartedAt: started, LastRefreshedAt: refreshed,
+		{ID: sessionA, SubjectID: subjectA, StartedAt: started, LastRefreshedAt: refreshed, LastSeenAt: seen,
 			Device: models.DeviceClass{Form: models.DeviceFormPhone, Client: models.DeviceClientBrowser, Description: "Chrome on Android"}},
-		{ID: "00000000-0000-0000-0000-0000000000a2", SubjectID: subjectA, StartedAt: started, LastRefreshedAt: started},
+		{ID: "00000000-0000-0000-0000-0000000000a2", SubjectID: subjectA, StartedAt: started, LastRefreshedAt: started, LastSeenAt: started},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v\nwant %+v", got, want)
@@ -198,9 +213,66 @@ func TestAProjectWithoutTheFunctionsIsNamed(t *testing.T) {
 		if err := store.End(context.Background(), subjectA, sessionA); !errors.Is(err, models.ErrIdentitySessionFunctionsMissing) {
 			t.Errorf("end %s: %v", code, err)
 		}
+		if err := store.Touch(context.Background(), subjectA, sessionA); !errors.Is(err, models.ErrIdentitySessionFunctionsMissing) {
+			t.Errorf("touch %s: %v", code, err)
+		}
 	}
 	store := identitySessions(t, &pgconn.PgError{Code: "57014"}, nil)
 	if _, err := store.List(context.Background(), subjectA); err == nil || errors.Is(err, models.ErrIdentitySessionFunctionsMissing) {
 		t.Fatalf("a cancelled query read as %v", err)
+	}
+}
+
+func TestListingNeverReadsLastSeenBeforeTheLastRefresh(t *testing.T) {
+	refreshed := time.Date(2026, 10, 20, 9, 30, 0, 0, time.UTC)
+	store := identitySessions(t, nil, listColumns,
+		[]driver.Value{sessionA, "", refreshed, refreshed, refreshed.Add(-time.Hour)},
+	)
+	got, err := store.List(context.Background(), subjectA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !got[0].LastSeenAt.Equal(refreshed) {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestAProjectWhoseListingPredatesLastSeenIsNamed(t *testing.T) {
+	store := identitySessions(t, &pgconn.PgError{Code: "42703"}, nil)
+	if _, err := store.List(context.Background(), subjectA); !errors.Is(err, models.ErrIdentitySessionFunctionsMissing) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestTouchingCallsTheFunctionWithTheSubjectAndTheSession(t *testing.T) {
+	store := identitySessions(t, nil, nil)
+	if err := store.Touch(context.Background(), strings.ToUpper(subjectA), sessionA); err != nil {
+		t.Fatal(err)
+	}
+	call := theIdentityProject.calls[0]
+	if call.query != "SELECT public.touch_sign_in_session($1::uuid, $2::uuid)" {
+		t.Fatalf("query %q", call.query)
+	}
+	if len(call.args) != 2 || call.args[0] != subjectA || call.args[1] != sessionA {
+		t.Fatalf("args %v", call.args)
+	}
+}
+
+func TestTouchingWithAnIdThatIsNoUUIDIsNotFoundWithoutAskingTheProject(t *testing.T) {
+	for _, pair := range [][2]string{{subjectA, "session-1"}, {"someone", sessionA}, {"", ""}} {
+		store := identitySessions(t, nil, nil)
+		if err := store.Touch(context.Background(), pair[0], pair[1]); !errors.Is(err, models.ErrSessionNotFound) {
+			t.Errorf("%v: got %v", pair, err)
+		}
+		if len(theIdentityProject.calls) != 0 {
+			t.Errorf("%v: the project was asked", pair)
+		}
+	}
+}
+
+func TestTouchingASessionEndedMeanwhileIsNoError(t *testing.T) {
+	store := identitySessions(t, &pgconn.PgError{Code: "23503"}, nil)
+	if err := store.Touch(context.Background(), subjectA, sessionA); err != nil {
+		t.Fatalf("got %v", err)
 	}
 }

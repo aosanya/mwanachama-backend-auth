@@ -58,7 +58,8 @@ func identityProjectStandIn(t *testing.T) *sql.DB {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		db.Exec(`DROP FUNCTION IF EXISTS public.list_sign_in_sessions(uuid), public.end_sign_in_session(uuid, uuid)`)
+		db.Exec(`DROP FUNCTION IF EXISTS public.list_sign_in_sessions(uuid), public.end_sign_in_session(uuid, uuid), public.touch_sign_in_session(uuid, uuid)`)
+		db.Exec(`DROP SCHEMA sign_in_private CASCADE`)
 		db.Exec(`DROP SCHEMA auth CASCADE`)
 		db.Exec(`DROP ROLE ` + role)
 	})
@@ -69,8 +70,10 @@ func identityProjectStandIn(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(functions); err != nil {
-		t.Fatal(err)
+	for range 2 {
+		if _, err := db.Exec(functions); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return db
 }
@@ -98,6 +101,50 @@ INSERT INTO auth.refresh_tokens (token, user_id, session_id) VALUES ('t1', $1, '
 		t.Fatalf("listed %+v, want the one live session, on a phone", got)
 	}
 
+	if got[0].LastSeenAt.Before(got[0].LastRefreshedAt) {
+		t.Fatalf("last seen %v before the last refresh %v", got[0].LastSeenAt, got[0].LastRefreshedAt)
+	}
+
+	if _, err := db.Exec(`UPDATE auth.sessions SET refreshed_at = (now() - interval '1 hour') AT TIME ZONE 'UTC' WHERE user_id = $1`, mine); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Touch(ctx, theirs, got[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	var touched int
+	if err := db.QueryRow(`SELECT count(*) FROM sign_in_private.session_last_seen`).Scan(&touched); err != nil || touched != 0 {
+		t.Fatalf("another subject's touch was kept: %d, %v", touched, err)
+	}
+	if err := store.Touch(ctx, mine, got[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Touch(ctx, mine, "00000000-0000-0000-0000-0000000000a2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT count(*) FROM sign_in_private.session_last_seen`).Scan(&touched); err != nil || touched != 1 {
+		t.Fatalf("%d last-seen rows, want only the live session's, %v", touched, err)
+	}
+	if _, err := db.Exec(`UPDATE sign_in_private.session_last_seen SET seen_at = now() - interval '30 seconds'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Touch(ctx, mine, got[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	var throttled bool
+	if err := db.QueryRow(`SELECT seen_at < now() - interval '20 seconds' FROM sign_in_private.session_last_seen`).Scan(&throttled); err != nil || !throttled {
+		t.Fatalf("a touch inside the throttle moved last seen: %v", err)
+	}
+	if got, err = store.List(ctx, mine); err != nil || len(got) != 1 {
+		t.Fatalf("%+v, %v", got, err)
+	}
+	if !got[0].LastSeenAt.After(got[0].LastRefreshedAt) {
+		t.Fatalf("last seen %v did not move past the refresh %v", got[0].LastSeenAt, got[0].LastRefreshedAt)
+	}
+	var reachable bool
+	if err := db.QueryRow(`SELECT has_table_privilege('session_reader_test', 'sign_in_private.session_last_seen', 'SELECT')`).Scan(&reachable); err != nil || reachable {
+		t.Fatalf("the host role reads the last-seen table directly: %v", err)
+	}
+
 	if err := store.End(ctx, theirs, got[0].ID); !errors.Is(err, models.ErrSessionNotFound) {
 		t.Fatalf("another subject ended it: %v", err)
 	}
@@ -107,6 +154,9 @@ INSERT INTO auth.refresh_tokens (token, user_id, session_id) VALUES ('t1', $1, '
 	var left int
 	if err := db.QueryRow(`SELECT count(*) FROM auth.refresh_tokens`).Scan(&left); err != nil || left != 0 {
 		t.Fatalf("%d refresh tokens survive the session, %v", left, err)
+	}
+	if err := db.QueryRow(`SELECT count(*) FROM sign_in_private.session_last_seen`).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("%d last-seen rows survive the session, %v", left, err)
 	}
 	if err := store.End(ctx, mine, got[0].ID); !errors.Is(err, models.ErrSessionNotFound) {
 		t.Fatalf("ending twice: %v", err)

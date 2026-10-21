@@ -13,11 +13,13 @@ import (
 )
 
 const (
-	listSignInSessionsQuery = "SELECT session_id::text, user_agent, started_at, last_refreshed_at FROM " + ListSignInSessionsFunc + "($1::uuid)"
+	listSignInSessionsQuery = "SELECT session_id::text, user_agent, started_at, last_refreshed_at, last_seen_at FROM " + ListSignInSessionsFunc + "($1::uuid)"
 	endSignInSessionQuery   = "SELECT " + EndSignInSessionFunc + "($1::uuid, $2::uuid)"
+	touchSignInSessionQuery = "SELECT " + TouchSignInSessionFunc + "($1::uuid, $2::uuid)"
+	sessionGoneCode         = "23503"
 )
 
-var unreachableFunctionCodes = []string{"42883", "42501", "3F000"}
+var unreachableFunctionCodes = []string{"42883", "42501", "3F000", "42703"}
 
 type IdentitySessions struct {
 	DB *sql.DB
@@ -56,10 +58,10 @@ func (s IdentitySessions) List(ctx context.Context, subjectID string) ([]models.
 	out := []models.IdentitySession{}
 	for rows.Next() {
 		var (
-			id, userAgent      string
-			started, refreshed sql.NullTime
+			id, userAgent            string
+			started, refreshed, seen sql.NullTime
 		)
-		if err := rows.Scan(&id, &userAgent, &started, &refreshed); err != nil {
+		if err := rows.Scan(&id, &userAgent, &started, &refreshed, &seen); err != nil {
 			return nil, identitySessionErr("list", err)
 		}
 		session := models.IdentitySession{
@@ -71,6 +73,10 @@ func (s IdentitySessions) List(ctx context.Context, subjectID string) ([]models.
 		session.LastRefreshedAt = session.StartedAt
 		if refreshed.Valid {
 			session.LastRefreshedAt = refreshed.Time.UTC()
+		}
+		session.LastSeenAt = session.LastRefreshedAt
+		if seen.Valid && seen.Time.After(session.LastSeenAt) {
+			session.LastSeenAt = seen.Time.UTC()
 		}
 		out = append(out, session)
 	}
@@ -92,6 +98,23 @@ func (s IdentitySessions) End(ctx context.Context, subjectID, sessionID string) 
 	}
 	if !ended {
 		return models.ErrSessionNotFound
+	}
+	return nil
+}
+
+func (s IdentitySessions) Touch(ctx context.Context, subjectID, sessionID string) error {
+	subject, subjectOK := canonicalUUID(subjectID)
+	session, sessionOK := canonicalUUID(sessionID)
+	if !subjectOK || !sessionOK {
+		return models.ErrSessionNotFound
+	}
+	_, err := s.DB.ExecContext(ctx, touchSignInSessionQuery, subject, session)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == sessionGoneCode {
+		return nil
+	}
+	if err != nil {
+		return identitySessionErr("touch", err)
 	}
 	return nil
 }

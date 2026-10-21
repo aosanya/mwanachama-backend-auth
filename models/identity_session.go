@@ -36,4 +36,5 @@ type IdentitySession struct {
 	Device          DeviceClass `json:"device"`
 	StartedAt       time.Time   `json:"started_at"`
 	LastRefreshedAt time.Time   `json:"last_refreshed_at"`
+	LastSeenAt      time.Time   `json:"last_seen_at"`
 }

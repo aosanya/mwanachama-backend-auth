@@ -59,7 +59,9 @@ not change; it changes none of them.
 How often a host calls `Touch` is the host's choice. Writing on every request
 is correct but not cheap; a host may skip the write when the stored instant is
 recent enough, since the screen shows "last used" at minute resolution at
-best.
+best. `LastSeenThrottle` (two minutes) is the interval the member app's
+sessions keep (decision 165, [identity sessions](identity-sessions.md#last-seen)),
+and the natural one to reuse here.
 
 Expiry is compared as text. Every timestamp is written in specstore's
 fixed-width layout, which sorts in time order, and the table is a new one
